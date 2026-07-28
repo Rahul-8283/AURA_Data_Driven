@@ -11,15 +11,16 @@ python-dotenv==1.0.1
 
 # Database Drivers
 neo4j==5.21.0
-SQLAlchemy==2.0.31
-pinecone-client==4.1.1
+chromadb
+supabase
 psycopg2-binary==2.9.9
+SQLAlchemy==2.0.31
 
-# AI & LLM Integration
-google-generativeai==0.7.1
+# AI, LLM & Orchestration
 openai==1.35.3
+langgraph
 
-# Asynchronous Tasks & Caching (Optional/Future-proofing)
+# Asynchronous Tasks & Message Broker
 celery==5.4.0
 redis==5.0.7
 

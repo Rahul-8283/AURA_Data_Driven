@@ -10,12 +10,16 @@ AURA is an AI-powered, domain-specific research assistant designed to accelerate
   <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/LangGraph-FF4F00?style=for-the-badge&logo=langchain&logoColor=white" alt="LangGraph" />
   <img src="https://img.shields.io/badge/OpenRouter-000000?style=for-the-badge&logo=openai&logoColor=white" alt="OpenRouter" />
+  <br />
   <img src="https://img.shields.io/badge/ChromaDB-FF6F00?style=for-the-badge&logo=chroma&logoColor=white" alt="ChromaDB" />
   <img src="https://img.shields.io/badge/Neo4j-018bff?style=for-the-badge&logo=neo4j&logoColor=white" alt="Neo4j" />
   <img src="https://img.shields.io/badge/Hugging_Face-FFD21E?style=for-the-badge&logo=huggingface&logoColor=000" alt="Hugging Face" />
   <img src="https://img.shields.io/badge/all--MiniLM--L6--v2-4B4B4B?style=for-the-badge" alt="all-MiniLM-L6-v2" />
   <img src="https://img.shields.io/badge/Celery-37814A?style=for-the-badge&logo=celery&logoColor=white" alt="Celery" />
+  <br />
   <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis" />
+  <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
 </p>
 
 ## Detailed Architecture Flow
@@ -110,6 +114,7 @@ After running multiple GA generations, materials are ranked by a fitness score (
 | :--- | :--- | :--- |
 | **Frontend** | React, TailwindCSS | Provides a responsive, fast, and modern user interface for researchers to input requirements and view candidates. |
 | **Backend API** | FastAPI | High-performance Python framework serving the core API and handling asynchronous multi-agent tasks. |
+| **Auth & Storage** | Supabase | Provides robust user authentication, file storage (buckets), and PostgreSQL for relational user data. |
 | **Task Queue** | Celery | Manages and distributes long-running Genetic Algorithm and LLM prediction tasks asynchronously. |
 | **Message Broker** | Redis | In-memory data store acting as the message broker for Celery and caching intermediate GraphRAG results. |
 | **Orchestration** | LangGraph | Manages the multi-agent workflows, state transitions, and the Genetic Algorithm (GA) execution loops. |
