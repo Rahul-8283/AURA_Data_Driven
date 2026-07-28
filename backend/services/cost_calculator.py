@@ -1,1 +1,0 @@
-# TODO: Financial cost projections
