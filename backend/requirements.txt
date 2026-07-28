@@ -1,0 +1,27 @@
+# Web Framework & Server
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+
+# Data Validation & Settings
+pydantic==2.7.4
+pydantic-settings==2.3.4
+
+# Environment Variables
+python-dotenv==1.0.1
+
+# Database Drivers
+neo4j==5.21.0
+SQLAlchemy==2.0.31
+pinecone-client==4.1.1
+psycopg2-binary==2.9.9
+
+# AI & LLM Integration
+google-generativeai==0.7.1
+openai==1.35.3
+
+# Asynchronous Tasks & Caching (Optional/Future-proofing)
+celery==5.4.0
+redis==5.0.7
+
+# Utility
+requests==2.32.3
