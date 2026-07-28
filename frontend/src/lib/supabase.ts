@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables');
-}
+export const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey);
 
-// Create a single supabase client for interacting with your database
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Keeping this nullable lets the visual experience run in a local preview even
+// before authentication credentials have been added to the environment.
+export const supabase = hasSupabaseConfig
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;

@@ -1,26 +1,22 @@
 import { useEffect } from 'react';
 import Lenis from 'lenis';
-import 'lenis/dist/lenis.css'; // Recommended by lenis docs
+import 'lenis/dist/lenis.css';
+import { ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import Hero from '../components/landing/Hero';
 import Features from '../components/landing/Features';
 import HowItWorks from '../components/landing/HowItWorks';
 import CallToAction from '../components/landing/CallToAction';
+import AuraMark from '../components/shared/AuraMark';
 
 const LandingPage = () => {
   useEffect(() => {
-    // Initialize Lenis specifically for the landing page
-    const lenis = new Lenis({
-      autoRaf: true, // Let lenis handle requestAnimationFrame internally if version supports it
-    });
-
-    // Cleanup lenis when leaving the landing page so it doesn't affect Dashboard/Login
-    return () => {
-      lenis.destroy();
-    };
+    const lenis = new Lenis({ autoRaf: true, smoothWheel: true });
+    return () => lenis.destroy();
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-gray-400 selection:bg-emerald-500/30 font-sans">
+    <div className="aura-app">
       <main>
         <Hero />
         <Features />
@@ -28,8 +24,15 @@ const LandingPage = () => {
         <CallToAction />
       </main>
 
-      <footer className="py-8 text-center text-gray-600 text-sm border-t border-gray-800">
-        <p>© 2026 MonoMELT Transformation Platform. Built for OpenAI Build Week.</p>
+      <footer className="site-footer">
+        <div className="site-frame site-footer__inner">
+          <AuraMark compact />
+          <p>Autonomous Unified Research Assistant for Battery Materials Discovery.</p>
+          <div className="site-footer__links">
+            <a href="#intelligence">Intelligence <ArrowUpRight size={14} /></a>
+            <Link to="/login">Research space <ArrowUpRight size={14} /></Link>
+          </div>
+        </div>
       </footer>
     </div>
   );

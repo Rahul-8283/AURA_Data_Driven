@@ -1,27 +1,48 @@
+import { ArrowRight, Check } from 'lucide-react';
+
 const steps = [
-  { num: '01', title: 'Upload Repository', desc: 'Securely upload your monolith zip or link your GitHub repo.' },
-  { num: '02', title: 'AI Generation', desc: 'Our FastAPI engine parses ASTs and uses LLMs to define bounded contexts.' },
-  { num: '03', title: 'Select Strategy', desc: 'Choose between Aggressive, Conservative, or Domain-Driven splits.' },
-  { num: '04', title: 'Export Code', desc: 'Download ready-to-deploy OpenAPI specs and Kubernetes manifests.' },
+  { number: '01', name: 'Frame the question', detail: 'Set your battery component, target performance, cost range, and operating constraints in plain language.' },
+  { number: '02', name: 'Grow the possibility space', detail: 'AURA seeds known materials, then explores substitutions, doping, and ratio changes through chemistry-aware mutations.' },
+  { number: '03', name: 'Filter with evidence', detail: 'GraphRAG checks each possibility against literature, material relationships, and known structural constraints.' },
+  { number: '04', name: 'Choose what earns a synthesis', detail: 'Review a ranked, explainable shortlist with predicted electrochemical properties and research provenance.' },
 ];
 
-const HowItWorks = () => {
-  return (
-    <section className="py-24 border-t border-[#222]">
-      <div className="container mx-auto px-4 max-w-5xl">
-        <h2 className="text-3xl lg:text-4xl font-bold text-white mb-16">How it Works</h2>
-        <div className="grid md:grid-cols-4 gap-6">
-          {steps.map((step, idx) => (
-            <div key={idx} className="p-6 bg-[#111] border border-[#222] rounded-sm">
-              <div className="text-3xl font-black text-gray-700 mb-6">{step.num}</div>
-              <h3 className="text-base font-bold text-white mb-2">{step.title}</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">{step.desc}</p>
-            </div>
+const HowItWorks = () => (
+  <section id="workflow" className="workflow-section section-space">
+    <div className="site-frame">
+      <div className="section-heading workflow-heading">
+        <span className="section-kicker">A considered process</span>
+        <h2>From a hunch to a<br /><em>credible direction.</em></h2>
+        <p>Human curiosity starts the work. AURA makes sure the next move is informed, inspectable, and worth the lab time.</p>
+      </div>
+
+      <div className="workflow-layout">
+        <div className="workflow-steps">
+          {steps.map((step, index) => (
+            <article className="workflow-step" key={step.number}>
+              <div className="workflow-step__index"><span>{step.number}</span>{index < steps.length - 1 && <i />}</div>
+              <div>
+                <h3>{step.name}</h3>
+                <p>{step.detail}</p>
+              </div>
+              <ArrowRight className="workflow-step__arrow" size={19} />
+            </article>
           ))}
         </div>
+
+        <aside className="workflow-aside">
+          <span className="workflow-aside__eyebrow">Always in the loop</span>
+          <div className="workflow-aside__metric"><strong>43</strong><span>evidence signals<br />on a single candidate</span></div>
+          <ul>
+            <li><Check size={14} /> No black-box recommendation</li>
+            <li><Check size={14} /> No chemistry-free mutation</li>
+            <li><Check size={14} /> No dead-end research trail</li>
+          </ul>
+          <span className="workflow-aside__glow" aria-hidden="true" />
+        </aside>
       </div>
-    </section>
-  );
-};
+    </div>
+  </section>
+);
 
 export default HowItWorks;

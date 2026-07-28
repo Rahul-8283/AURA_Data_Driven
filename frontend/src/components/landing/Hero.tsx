@@ -1,58 +1,126 @@
+import { useState } from 'react';
+import { ArrowRight, Menu, Sparkles, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Copy } from 'lucide-react';
+import AuraMark from '../shared/AuraMark';
+
+const navItems = [
+  { label: 'Intelligence', href: '#intelligence' },
+  { label: 'Workflow', href: '#workflow' },
+  { label: 'Research notes', href: '#research-notes' },
+];
 
 const Hero = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
-    <section className="relative pt-12 pb-20 lg:pb-32">
-      <div className="container mx-auto px-4 max-w-5xl">
+    <section className="hero-section">
+      <div className="hero-aurora hero-aurora--one" />
+      <div className="hero-aurora hero-aurora--two" />
+      <div className="hero-noise" />
 
-        {/* Mock Navbar (matching the screenshot vibe) */}
-        <div className="flex justify-between items-center mb-12 md:mb-24 pb-4 md:pb-8">
-          <div className="text-2xl md:text-4xl font-logo tracking-widest text-gray-200">monomelt</div>
-          <div className="hidden md:flex gap-8 text-sm text-gray-400">
-            <span className="hover:text-white cursor-pointer transition-colors">GitHub</span>
-            <span className="hover:text-white cursor-pointer transition-colors">Docs</span>
-            <span className="hover:text-white cursor-pointer transition-colors">Data</span>
-            <span className="hover:text-white cursor-pointer transition-colors">Zen</span>
-            <span className="hover:text-white cursor-pointer transition-colors">Enterprise</span>
-          </div>
-          <Link to="/login" className="px-4 py-2 bg-white text-black font-bold text-sm rounded-sm hover:bg-gray-200 transition-colors flex items-center gap-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Try It
+      <div className="site-frame">
+        <header className="site-nav">
+          <Link to="/" aria-label="AURA home" className="site-nav__brand">
+            <AuraMark />
           </Link>
-        </div>
 
-        {/* Badge */}
-        <div className="inline-block border border-[#222] bg-[#0a0a0a] text-gray-400 text-[10px] sm:text-xs mb-8 p-1 leading-relaxed">
-          <span className="bg-white text-black px-2 py-0.5 mr-2 font-bold inline-block">New</span>
-          <span>Introducing full AST parsing for legacy monoliths. <Link to="/login" className="text-gray-500 hover:text-white ml-1">Try it now</Link></span>
-        </div>
+          <nav className="site-nav__links" aria-label="Primary navigation">
+            {navItems.map((item) => (
+              <a key={item.href} href={item.href}>{item.label}</a>
+            ))}
+          </nav>
 
-        {/* Main Heading */}
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight">
-          The open source AI <br className="hidden md:block" /> monolith deconstructor
-        </h1>
+          <Link to="/login" className="nav-login-link">Research space <ArrowRight size={15} /></Link>
 
-        {/* Subtitle */}
-        <p className="text-sm sm:text-base lg:text-lg text-gray-400 max-w-2xl mb-12 leading-relaxed">
-          Upload your legacy codebase and let our AI agents analyze ASTs, identify bounded contexts, and generate production-ready microservices instantly.
-        </p>
+          <button
+            type="button"
+            className="nav-menu-button"
+            aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((isOpen) => !isOpen)}
+          >
+            {menuOpen ? <X size={19} /> : <Menu size={19} />}
+          </button>
+        </header>
 
-        {/* Terminal Box */}
-        <div className="bg-[#111] border border-[#222] rounded-sm w-full max-w-3xl overflow-hidden">
-          <div className="flex gap-4 md:gap-8 px-4 md:px-6 py-4 border-b border-[#222] text-xs md:text-sm font-bold overflow-x-auto whitespace-nowrap">
-            <span className="text-white cursor-pointer">curl</span>
-            <span className="text-gray-600 cursor-pointer hover:text-gray-400">npm</span>
-            <span className="text-gray-600 cursor-pointer hover:text-gray-400">bun</span>
-            <span className="text-gray-600 cursor-pointer hover:text-gray-400">brew</span>
-            <span className="text-gray-600 cursor-pointer hover:text-gray-400">paru</span>
+        {menuOpen && (
+          <nav className="mobile-nav" aria-label="Mobile navigation">
+            {navItems.map((item) => (
+              <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</a>
+            ))}
+            <Link to="/login" onClick={() => setMenuOpen(false)}>Enter research space</Link>
+          </nav>
+        )}
+
+        <div className="hero-grid">
+          <div className="hero-copy">
+            <div className="eyebrow"><Sparkles size={14} /> Autonomous materials discovery</div>
+            <h1>Make the next <em>breakthrough</em> feel inevitable.</h1>
+            <p className="hero-copy__lede">
+              AURA turns battery-material research into a living field of possibilities—grounded in literature,
+              shaped by chemistry, and focused on what is worth making next.
+            </p>
+
+            <div className="hero-actions">
+              <Link to="/login" className="button button--primary">Start a discovery <ArrowRight size={17} /></Link>
+              <a href="#workflow" className="button button--ghost">See the method</a>
+            </div>
+
+            <div className="hero-proof">
+              <div className="hero-proof__avatars" aria-hidden="true">
+                <span>Li</span><span>Ni</span><span>Mn</span><span>Co</span>
+              </div>
+              <p><strong>Built for the laboratory.</strong> Traceable reasoning from question to candidate.</p>
+            </div>
           </div>
-          <div className="px-4 md:px-6 py-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs md:text-sm">
-            <span className="text-gray-500 break-all sm:break-normal">curl -fsSL <span className="text-white font-bold">https://monomelt.ai/install</span> | bash</span>
-            <Copy className="w-4 h-4 text-gray-600 hover:text-white cursor-pointer transition-colors self-end sm:self-auto shrink-0" />
+
+          <div className="hero-stage" aria-label="AURA material discovery visualization">
+            <div className="hero-stage__ring hero-stage__ring--outer" />
+            <div className="hero-stage__ring hero-stage__ring--inner" />
+            <span className="hero-stage__particle hero-stage__particle--one" />
+            <span className="hero-stage__particle hero-stage__particle--two" />
+            <span className="hero-stage__particle hero-stage__particle--three" />
+
+            <div className="material-console">
+              <div className="material-console__topline">
+                <span><i /> Live discovery field</span>
+                <span>GEN 08 / 20</span>
+              </div>
+
+              <div className="material-console__core">
+                <span className="material-console__label">Highest-scoring composition</span>
+                <div className="material-formula">LiNi<sub>0.82</sub>Mn<sub>0.10</sub>Co<sub>0.08</sub>O<sub>2</sub></div>
+                <p>Layered nickel-rich cathode · validated against 43 research signals</p>
+              </div>
+
+              <div className="material-console__signal-grid">
+                <div><span>Capacity</span><strong>224 <small>mAh/g</small></strong></div>
+                <div><span>Cycle retention</span><strong>91 <small>%</small></strong></div>
+                <div><span>Confidence</span><strong>0.87</strong></div>
+              </div>
+
+              <div className="material-console__trail" aria-hidden="true">
+                <span className="trail-dot trail-dot--one" />
+                <span className="trail-dot trail-dot--two" />
+                <span className="trail-dot trail-dot--three" />
+                <span className="trail-dot trail-dot--four" />
+              </div>
+            </div>
+
+            <div className="hero-insight-card">
+              <span className="hero-insight-card__eyebrow">AURA insight</span>
+              <p>Mg doping may temper cation mixing at high voltage.</p>
+              <span className="hero-insight-card__source">6 corroborating sources</span>
+            </div>
           </div>
         </div>
 
+        <div className="hero-marquee" aria-label="AURA capabilities">
+          <span>Graph-grounded reasoning</span><i />
+          <span>Candidate evolution</span><i />
+          <span>Evidence-first predictions</span><i />
+          <span>Lab-ready reports</span>
+        </div>
       </div>
     </section>
   );

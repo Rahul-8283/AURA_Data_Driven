@@ -1,47 +1,72 @@
-import { Cpu, DollarSign, GitMerge } from 'lucide-react';
+import { ArrowUpRight, FlaskConical, Network, ShieldCheck, Sparkles } from 'lucide-react';
 
 const features = [
   {
-    title: 'Advanced AI Analysis',
-    description: 'Powered by latest LLMs, we track data flows, identify bounded contexts, and find transactional boundaries.',
-    icon: Cpu
+    icon: FlaskConical,
+    number: '01',
+    title: 'Chemistry-native exploration',
+    text: 'Start with a real battery question. AURA understands cathodes, anodes, electrolytes, doping, and the trade-offs that define each.',
   },
   {
-    title: 'Cost Projections',
-    description: 'Calculate exactly how much your new microservices architecture will cost to run on AWS or GCP.',
-    icon: DollarSign
+    icon: Network,
+    number: '02',
+    title: 'A connected evidence field',
+    text: 'Literature, material relationships, degradation modes, and synthesis constraints stay connected instead of becoming another pile of PDFs.',
   },
   {
-    title: 'Interactive Blueprints',
-    description: 'Drag and drop service boundaries in a visual Neo4j graph before generating K8s manifests.',
-    icon: GitMerge
-  }
+    icon: ShieldCheck,
+    number: '03',
+    title: 'Recommendations you can defend',
+    text: 'Every promising candidate is ranked with predicted properties, confidence, and the exact reasoning your research team can inspect.',
+  },
 ];
 
-const Features = () => {
-  return (
-    <section className="py-24 border-t border-[#222] bg-[#0a0a0a]">
-      <div className="container mx-auto px-4 max-w-5xl">
-        <div className="mb-16">
-          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">Everything you need to transform</h2>
-          <p className="text-gray-400 max-w-2xl">No more guessing. Get a mathematically and logically sound migration strategy.</p>
+const Features = () => (
+  <section id="intelligence" className="intelligence-section section-space">
+    <div className="site-frame">
+      <div className="section-heading section-heading--split">
+        <div>
+          <span className="section-kicker"><Sparkles size={14} /> Designed for scientific taste</span>
+          <h2>Research has never been short on data.<br />It has been short on <em>clarity.</em></h2>
         </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {features.map((feature, idx) => {
-            const IconComponent = feature.icon;
-            return (
-            <div key={idx} className="p-8 bg-[#111] border border-[#222] rounded-sm group hover:border-gray-500 transition-colors">
-              <div className="mb-6 text-white group-hover:scale-105 transition-transform origin-left">
-                <IconComponent className="w-8 h-8" />
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2">{feature.title}</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">{feature.description}</p>
-            </div>
-          )})}
+        <p>AURA brings the whole discovery loop into focus, so every new direction begins with more signal and less speculation.</p>
+      </div>
+
+      <div className="evidence-banner">
+        <div className="evidence-banner__content">
+          <span className="section-kicker">The AURA difference</span>
+          <h3>Not a chatbot with chemistry vocabulary.</h3>
+          <p>It is a research system that evolves possible materials, tests them against known constraints, and explains why the best ones deserve attention.</p>
+          <a href="#workflow" className="text-link">Follow the discovery loop <ArrowUpRight size={16} /></a>
+        </div>
+        <div className="evidence-banner__visual" aria-hidden="true">
+          <span className="evidence-orbit evidence-orbit--one" />
+          <span className="evidence-orbit evidence-orbit--two" />
+          <span className="evidence-node evidence-node--one">Li</span>
+          <span className="evidence-node evidence-node--two">O</span>
+          <span className="evidence-node evidence-node--three">Ni</span>
+          <span className="evidence-node evidence-node--four">Mg</span>
+          <span className="evidence-line evidence-line--one" />
+          <span className="evidence-line evidence-line--two" />
+          <span className="evidence-line evidence-line--three" />
         </div>
       </div>
-    </section>
-  );
-};
+
+      <div className="feature-grid">
+        {features.map((feature) => {
+          const Icon = feature.icon;
+          return (
+            <article className="feature-card" key={feature.number}>
+              <div className="feature-card__top"><span>{feature.number}</span><Icon size={21} /></div>
+              <h3>{feature.title}</h3>
+              <p>{feature.text}</p>
+              <div className="feature-card__rule" />
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+);
 
 export default Features;
