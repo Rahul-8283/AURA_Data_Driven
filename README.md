@@ -1,9 +1,9 @@
-# AURA: Autonomous Unified Research Assistant for Scientific Discovery using Multi-Agent AI and GraphRAG
+<h1 align="center">AURA: Autonomous Unified Research Assistant for Battery Materials Discovery</h1>
 
-## 📖 Overview
-AURA is an AI-powered research assistant designed to automate the initial stages of scientific research. Instead of manually searching through papers, datasets, and patents, users simply provide a research topic. AURA utilizes multiple collaborative AI agents to collect, organize, analyze, and summarize research information. By building a Knowledge Graph and using a **ChromaDB** vector database, AURA employs GraphRAG for relationship-aware reasoning across multiple research sources. Ultimately, the system generates a structured research report containing a literature review, related work, identified research gaps, and references.
+## Overview
+AURA is an AI-powered, domain-specific research assistant designed to accelerate the discovery of new **Battery Materials**. Instead of a generic research assistant, AURA focuses on evolving and optimizing battery components (cathodes, anodes, electrolytes, SEI). It utilizes a multi-agent system powered by **GraphRAG**, **Genetic Algorithms (GA)**, and **LLM-based Property Prediction** to intelligently mutate known battery compositions, validate their feasibility, and predict their electrochemical properties before physical synthesis. 
 
-## 🛠️ Technology Stack
+## Technology Stack
 <p align="center">
   <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="TailwindCSS" />
@@ -12,51 +12,49 @@ AURA is an AI-powered research assistant designed to automate the initial stages
   <img src="https://img.shields.io/badge/OpenRouter-000000?style=for-the-badge&logo=openai&logoColor=white" alt="OpenRouter" />
   <img src="https://img.shields.io/badge/ChromaDB-FF6F00?style=for-the-badge&logo=chroma&logoColor=white" alt="ChromaDB" />
   <img src="https://img.shields.io/badge/Neo4j-018bff?style=for-the-badge&logo=neo4j&logoColor=white" alt="Neo4j" />
-  <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" alt="PyTorch" />
+  <img src="https://img.shields.io/badge/Hugging_Face-FFD21E?style=for-the-badge&logo=huggingface&logoColor=000" alt="Hugging Face" />
+  <img src="https://img.shields.io/badge/all--MiniLM--L6--v2-4B4B4B?style=for-the-badge" alt="all-MiniLM-L6-v2" />
+  <img src="https://img.shields.io/badge/Celery-37814A?style=for-the-badge&logo=celery&logoColor=white" alt="Celery" />
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis" />
 </p>
 
-## ⚙️ Detailed Architecture Flow
+## Detailed Architecture Flow
 
 ```mermaid
 graph TD
-    %% Styling
-    classDef userStyle fill:#f9f9f9,stroke:#333,stroke-width:2px;
-    classDef agentStyle fill:#d4edda,stroke:#28a745,stroke-width:2px;
-    classDef processStyle fill:#cce5ff,stroke:#007bff,stroke-width:2px;
-    classDef dbStyle fill:#fff3cd,stroke:#ffc107,stroke-width:2px;
-    classDef reportStyle fill:#f8d7da,stroke:#dc3545,stroke-width:2px;
-
-    User([👤 User Input / Research Topic]) ::: userStyle
-    Planner[🧠 Planner Agent] ::: agentStyle
+    User(["👤 User Input / Battery Requirements"])
+    Planner["🧠 Planner Agent"]
     
-    subgraph Information Retrieval
-        Papers[📄 Literature Retrieval Agent] ::: agentStyle
-        Datasets[📊 Dataset Discovery Agent] ::: agentStyle
-        Patents[📜 Patent Retrieval Agent] ::: agentStyle
+    subgraph Battery Knowledge Graph Construction
+        Papers["📄 Battery Literature Extraction"]
+        Datasets["📊 Battery Databases (e.g. Materials Project)"]
     end
 
-    DocProc[📝 Document Processing Module] ::: processStyle
-    Embeddings[🔢 Embedding Generation <br> (Sentence Transformers)] ::: processStyle
+    DocProc["📝 Document Processing Module"]
+    Embeddings["🔢 Embedding Generation (Hugging Face / all-MiniLM)"]
     
-    Chroma[(🗄️ Vector Database <br> ChromaDB)] ::: dbStyle
-    KG[🕸️ Knowledge Graph Builder] ::: processStyle
-    Neo4j[(🗃️ Knowledge Graph <br> Neo4j)] ::: dbStyle
+    Chroma[("🗄️ Vector Database (ChromaDB)")]
+    KG["🕸️ Battery Knowledge Graph Builder"]
+    Neo4j[("🗃️ Knowledge Graph (Neo4j)")]
     
-    GraphRAG[⚙️ GraphRAG Engine] ::: processStyle
-    Evidence[🔍 Evidence Verification Agent] ::: agentStyle
-    GapAgent[💡 Research Gap Agent] ::: agentStyle
-    ReportAgent[📝 Report Generation Agent] ::: agentStyle
-    FinalReport([📑 Final Research Report]) ::: reportStyle
+    GraphRAG["⚙️ GraphRAG Engine"]
+    
+    subgraph Generative Evolution
+        GA["🧬 Genetic Algorithm (Mutations, Doping)"]
+        Validation["🔍 GraphRAG Chemistry Validation"]
+        LLM["🧠 LLM Property Prediction (Capacity, Cost, Cycles)"]
+    end
+    
+    ReportAgent["📝 Material Recommendation Agent"]
+    FinalReport(["📑 Top Synthesizable Materials"])
 
     %% Connections
     User --> Planner
     Planner --> Papers
     Planner --> Datasets
-    Planner --> Patents
     
     Papers --> DocProc
     Datasets --> DocProc
-    Patents --> DocProc
     
     DocProc --> Embeddings
     DocProc --> KG
@@ -67,19 +65,55 @@ graph TD
     Chroma --> GraphRAG
     Neo4j --> GraphRAG
     
-    GraphRAG --> Evidence
-    Evidence --> GapAgent
-    GapAgent --> ReportAgent
+    Planner --> GA
+    GA --> Validation
+    Validation --> GraphRAG
+    GraphRAG --> Validation
+    Validation --> LLM
+    LLM --> GraphRAG
+    GraphRAG --> LLM
+    
+    LLM --> ReportAgent
     ReportAgent --> FinalReport
 ```
 
-## ✨ Features
+## Core Features & Logic Flow
 
-* **Automated Literature Review:** Automatically fetches relevant research papers from OpenAlex, Semantic Scholar, arXiv, and CrossRef.
-* **Dataset Discovery:** Finds relevant datasets from Kaggle, HuggingFace, GitHub, and PapersWithCode.
-* **Patent Retrieval:** Explores commercial solutions and innovations via Google Patents and USPTO.
-* **Intelligent Document Processing:** Downloads PDFs, extracts and cleans text, chunks data, and extracts metadata.
-* **Knowledge Graph Construction:** Automatically maps out authors, methods, algorithms, datasets, and applications using Neo4j.
-* **Advanced GraphRAG Reasoning:** Performs multi-hop reasoning over connected knowledge (using **ChromaDB** and Neo4j) rather than simple keyword retrieval.
-* **Research Gap Detection:** Analyzes missing relationships, limitations, and future work to identify research opportunities.
-* **Comprehensive Report Generation:** Outputs a structured report containing the literature review, related work, evidence-backed insights, research gaps, and references.
+### 1. Battery-Specific Knowledge Graph
+AURA builds a comprehensive Knowledge Graph consisting of elements, battery materials (LCO, NMC, LFP), roles (Cathode, Anode, Electrolyte), degradation modes, and doping strategies.
+* **Nodes:** Elements, Materials, Properties, Degradation Modes.
+* **Edges:** `contains`, `can_be_doped_with`, `suffers_from`, `prevented_by`.
+
+### 2. Battery-Specific GraphRAG Queries
+Rather than generic similarity searches, AURA asks specific electrochemical questions:
+* *Find cathode alternatives to LiCoO₂.*
+* *What dopants improve cycling stability in Ni-rich cathodes?*
+* *If I substitute Ni with Co, what happens to voltage and safety?*
+
+### 3. Smart Genetic Algorithm (GA) Mutations
+AURA uses GA to intelligently evolve battery compositions. Instead of random mutations, it applies chemistry-based rules and validates them instantly against the GraphRAG:
+* **Element Substitution:** (e.g., replace Co with Ni).
+* **Doping:** (e.g., add 10% Mg doping).
+* **Validation:** Before accepting a mutation, GraphRAG checks if the structure remains stable, if the synthesis is realistic, and what the cost impact is.
+
+### 4. LLM-Based Property Prediction
+Instead of training a black-box ML model, AURA uses large language models (LLMs) equipped with GraphRAG context for highly interpretable property prediction.
+* **Input:** New mutated composition (e.g., `LiNi₀.₇Co₀.₂Al₀.₁O₂`) + GraphRAG Context (similar materials, dopant effects).
+* **Output:** Estimated specific capacity (mAh/g), voltage (V), cycle life, thermal stability, cost ($/kg), and **explainable reasoning** for the prediction.
+
+### 5. Final Material Recommendation
+After running multiple GA generations, materials are ranked by a fitness score (e.g., `Capacity × Cycles / Cost`). The system outputs a final structured report recommending the top novel materials that are actually worth synthesizing in the lab, complete with literature-backed evidence for their viability.
+
+## Detailed Technology Stack
+
+| Component | Technology | Description |
+| :--- | :--- | :--- |
+| **Frontend** | React, TailwindCSS | Provides a responsive, fast, and modern user interface for researchers to input requirements and view candidates. |
+| **Backend API** | FastAPI | High-performance Python framework serving the core API and handling asynchronous multi-agent tasks. |
+| **Task Queue** | Celery | Manages and distributes long-running Genetic Algorithm and LLM prediction tasks asynchronously. |
+| **Message Broker** | Redis | In-memory data store acting as the message broker for Celery and caching intermediate GraphRAG results. |
+| **Orchestration** | LangGraph | Manages the multi-agent workflows, state transitions, and the Genetic Algorithm (GA) execution loops. |
+| **LLM Engine** | OpenRouter | Routes requests to top-tier LLMs (e.g., Claude, GPT) for deep chemical reasoning and property prediction. |
+| **Knowledge Graph** | Neo4j | Graph database storing battery elements, materials, properties, and their complex electrochemical relationships. |
+| **Vector Database** | ChromaDB | Lightweight, high-performance vector database for storing and retrieving context-aware text embeddings. |
+| **Embeddings** | Hugging Face (`all-MiniLM`) | Generates semantic embeddings for battery research papers to power the GraphRAG retrieval engine. |
