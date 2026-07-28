@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, GitBranch, Loader2, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import AuraMark from '../components/shared/AuraMark';
 import { hasSupabaseConfig, supabase } from '../lib/supabase';
 
@@ -41,7 +42,12 @@ const Login = () => {
       </header>
 
       <main className="auth-layout">
-        <section className="auth-intro">
+        <motion.section 
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+          className="auth-intro"
+        >
           <span className="eyebrow"><Sparkles size={14} /> Your discovery space</span>
           <h1>Less searching.<br /><em>More seeing.</em></h1>
           <p>Bring your next battery-material question into a space designed to keep intuition, evidence, and possibility in one frame.</p>
@@ -53,9 +59,14 @@ const Login = () => {
               <p>Evidence-linked candidate exploration for every session.</p>
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <section className="auth-card" aria-labelledby="auth-heading">
+        <motion.section 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="auth-card" aria-labelledby="auth-heading"
+        >
           <div className="auth-card__heading">
             <span className="auth-card__label">Researcher access</span>
             <h2 id="auth-heading">Welcome to the<br />AURA field.</h2>
@@ -82,7 +93,7 @@ const Login = () => {
             <li><Check size={15} /> Review evidence behind every recommendation</li>
           </ul>
           {!hasSupabaseConfig && <p className="auth-card__setup">Local preview mode: connect Supabase to enable sign-in.</p>}
-        </section>
+        </motion.section>
       </main>
     </div>
   );

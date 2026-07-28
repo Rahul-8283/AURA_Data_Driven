@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Menu, Sparkles, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import AuraMark from '../shared/AuraMark';
 
 const navItems = [
@@ -53,7 +54,12 @@ const Hero = () => {
         )}
 
         <div className="hero-grid">
-          <div className="hero-copy">
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="hero-copy"
+          >
             <div className="eyebrow"><Sparkles size={14} /> Autonomous materials discovery</div>
             <h1>Make the next <em>breakthrough</em> feel inevitable.</h1>
             <p className="hero-copy__lede">
@@ -72,9 +78,14 @@ const Hero = () => {
               </div>
               <p><strong>Built for the laboratory.</strong> Traceable reasoning from question to candidate.</p>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="hero-stage" aria-label="AURA material discovery visualization">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="hero-stage" aria-label="AURA material discovery visualization"
+          >
             <div className="hero-stage__ring hero-stage__ring--outer" />
             <div className="hero-stage__ring hero-stage__ring--inner" />
             <span className="hero-stage__particle hero-stage__particle--one" />
@@ -112,7 +123,7 @@ const Hero = () => {
               <p>Mg doping may temper cation mixing at high voltage.</p>
               <span className="hero-insight-card__source">6 corroborating sources</span>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         <div className="hero-marquee" aria-label="AURA capabilities">

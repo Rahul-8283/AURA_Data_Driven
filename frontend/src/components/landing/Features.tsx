@@ -1,4 +1,5 @@
 import { ArrowUpRight, FlaskConical, Network, ShieldCheck, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const features = [
   {
@@ -24,15 +25,27 @@ const features = [
 const Features = () => (
   <section id="intelligence" className="intelligence-section section-space">
     <div className="site-frame">
-      <div className="section-heading section-heading--split">
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6 }}
+        className="section-heading section-heading--split"
+      >
         <div>
           <span className="section-kicker"><Sparkles size={14} /> Designed for scientific taste</span>
           <h2>Research has never been short on data.<br />It has been short on <em>clarity.</em></h2>
         </div>
         <p>AURA brings the whole discovery loop into focus, so every new direction begins with more signal and less speculation.</p>
-      </div>
+      </motion.div>
 
-      <div className="evidence-banner">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.7, delay: 0.2 }}
+        className="evidence-banner"
+      >
         <div className="evidence-banner__content">
           <span className="section-kicker">The AURA difference</span>
           <h3>Not a chatbot with chemistry vocabulary.</h3>
@@ -50,18 +63,25 @@ const Features = () => (
           <span className="evidence-line evidence-line--two" />
           <span className="evidence-line evidence-line--three" />
         </div>
-      </div>
+      </motion.div>
 
       <div className="feature-grid">
-        {features.map((feature) => {
+        {features.map((feature, i) => {
           const Icon = feature.icon;
           return (
-            <article className="feature-card" key={feature.number}>
+            <motion.article 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: 0.3 + (i * 0.1) }}
+              className="feature-card" 
+              key={feature.number}
+            >
               <div className="feature-card__top"><span>{feature.number}</span><Icon size={21} /></div>
               <h3>{feature.title}</h3>
               <p>{feature.text}</p>
               <div className="feature-card__rule" />
-            </article>
+            </motion.article>
           );
         })}
       </div>

@@ -1,4 +1,5 @@
 import { ArrowRight, Check } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const steps = [
   { number: '01', name: 'Frame the question', detail: 'Set your battery component, target performance, cost range, and operating constraints in plain language.' },
@@ -10,27 +11,46 @@ const steps = [
 const HowItWorks = () => (
   <section id="workflow" className="workflow-section section-space">
     <div className="site-frame">
-      <div className="section-heading workflow-heading">
+      <motion.div 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.6 }}
+        className="section-heading workflow-heading"
+      >
         <span className="section-kicker">A considered process</span>
         <h2>From a hunch to a<br /><em>credible direction.</em></h2>
         <p>Human curiosity starts the work. AURA makes sure the next move is informed, inspectable, and worth the lab time.</p>
-      </div>
+      </motion.div>
 
       <div className="workflow-layout">
         <div className="workflow-steps">
           {steps.map((step, index) => (
-            <article className="workflow-step" key={step.number}>
+            <motion.article 
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: index * 0.15 }}
+              className="workflow-step" 
+              key={step.number}
+            >
               <div className="workflow-step__index"><span>{step.number}</span>{index < steps.length - 1 && <i />}</div>
               <div>
                 <h3>{step.name}</h3>
                 <p>{step.detail}</p>
               </div>
               <ArrowRight className="workflow-step__arrow" size={19} />
-            </article>
+            </motion.article>
           ))}
         </div>
 
-        <aside className="workflow-aside">
+        <motion.aside 
+          initial={{ opacity: 0, x: 30 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.7, delay: 0.4 }}
+          className="workflow-aside"
+        >
           <span className="workflow-aside__eyebrow">Always in the loop</span>
           <div className="workflow-aside__metric"><strong>43</strong><span>evidence signals<br />on a single candidate</span></div>
           <ul>
@@ -39,7 +59,7 @@ const HowItWorks = () => (
             <li><Check size={14} /> No dead-end research trail</li>
           </ul>
           <span className="workflow-aside__glow" aria-hidden="true" />
-        </aside>
+        </motion.aside>
       </div>
     </div>
   </section>
