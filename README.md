@@ -118,5 +118,5 @@ After running multiple GA generations, materials are ranked by a fitness score (
 | **Orchestration** | LangGraph | Manages the multi-agent workflows, state transitions, and the Genetic Algorithm (GA) execution loops. |
 | **LLM Engine** | OpenRouter | Routes requests to top-tier LLMs (e.g., Claude, GPT) for deep chemical reasoning and property prediction. |
 | **Knowledge Graph** | Neo4j | Graph database storing battery elements, materials, properties, and their complex electrochemical relationships. |
-| **Vector Database** | ChromaDB | Lightweight, high-performance vector database for storing and retrieving context-aware text embeddings. |
+| **Vector Database** | ChromaDB (Persistent Storage) | Lightweight, high-performance vector database configured for local persistent storage to ensure research data is never lost between restarts. |
 | **Embeddings** | Hugging Face (`all-MiniLM`) | Generates semantic embeddings for battery research papers to power the GraphRAG retrieval engine. |
