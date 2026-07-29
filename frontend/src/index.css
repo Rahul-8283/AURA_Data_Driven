@@ -293,6 +293,15 @@ button:focus-visible, a:focus-visible, textarea:focus-visible { outline: 2px sol
 .auth-card__list svg { color: var(--mint); }
 .auth-card__setup { position: relative; z-index: 1; margin: 24px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: #75879f; font-size: .63rem; }
 
+.auth-form { position: relative; z-index: 1; display: grid; gap: 15px; margin-top: 25px; }
+.auth-input { width: 100%; padding: 13px 16px; border: 1px solid rgba(228,239,247,.2); border-radius: 10px; color: #f1f4f5; background: rgba(0,0,0,.2); font-size: .8rem; transition: border-color .2s ease, box-shadow .2s ease; }
+.auth-input:focus { outline: none; border-color: var(--mint); box-shadow: 0 0 0 3px rgba(198,56,73,.15); }
+.auth-input::placeholder { color: rgba(228,239,247,.4); }
+.auth-submit-button { position: relative; z-index: 1; display: flex; width: 100%; align-items: center; justify-content: center; gap: 8px; padding: 14px 17px; margin-top: 5px; border: 0; border-radius: 10px; color: #3b1017; background: linear-gradient(135deg, #f4f1ec, #d8d1cb); font-size: .8rem; font-weight: 800; transition: transform .2s ease, box-shadow .2s ease; }
+.auth-submit-button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 13px 25px rgba(123, 24, 38, 0.22); }
+.auth-submit-button:disabled { cursor: not-allowed; opacity: .6; }
+.auth-footer-link { position: relative; z-index: 1; display: block; margin-top: 25px; text-align: center; color: #9baabd; font-size: .75rem; }
+.auth-footer-link:hover { color: var(--mint-bright); }
 /* Research workspace */
 .workspace-shell { display: grid; grid-template-columns: 245px minmax(0, 1fr); min-height: 100vh; background: #07101c; color: #e8eef5; }
 .workspace-sidebar { position: sticky; top: 0; display: flex; height: 100vh; flex-direction: column; padding: 24px 15px 17px; border-right: 1px solid var(--line); background: linear-gradient(180deg, #091725, #07111e); }
