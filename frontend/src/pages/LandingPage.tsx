@@ -1,6 +1,3 @@
-import { useEffect } from 'react';
-import Lenis from 'lenis';
-import 'lenis/dist/lenis.css';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Hero from '../components/landing/Hero';
@@ -8,11 +5,20 @@ import Features from '../components/landing/Features';
 import HowItWorks from '../components/landing/HowItWorks';
 import CallToAction from '../components/landing/CallToAction';
 import AuraMark from '../components/shared/AuraMark';
+import { useEffect } from 'react';
+import Lenis from 'lenis';
 
 const LandingPage = () => {
   useEffect(() => {
-    const lenis = new Lenis({ autoRaf: true, smoothWheel: true });
-    return () => lenis.destroy();
+    const lenis = new Lenis();
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+    return () => {
+      lenis.destroy();
+    };
   }, []);
 
   return (

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import AuraMark from '../components/shared/AuraMark';
 import { supabase } from '../lib/supabase';
 
@@ -53,22 +52,13 @@ const Signup = () => {
 
   return (
     <div className="auth-page">
-      <div className="auth-page__aurora auth-page__aurora--one" />
-      <div className="auth-page__aurora auth-page__aurora--two" />
-      <div className="auth-page__grain" />
-
       <header className="auth-topbar">
         <Link to="/" className="auth-back"><ArrowLeft size={16} /> Back to AURA</Link>
         <AuraMark compact />
       </header>
 
       <main className="auth-layout">
-        <motion.section 
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="auth-intro"
-        >
+        <section className="auth-intro">
           <span className="eyebrow"><Sparkles size={14} /> Join the network</span>
           <h1>Start discovering.<br /><em>Start building.</em></h1>
           <p>Create an account to track your material searches and connect with the GraphRAG backend.</p>
@@ -80,14 +70,9 @@ const Signup = () => {
               <p>Your research trails are strictly isolated to your workspace.</p>
             </div>
           </div>
-        </motion.section>
+        </section>
 
-        <motion.section 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="auth-card" aria-labelledby="auth-heading"
-        >
+        <section className="auth-card" aria-labelledby="auth-heading">
           <div className="auth-card__heading">
             <span className="auth-card__label">New Researcher</span>
             <h2 id="auth-heading">Create your<br />AURA account.</h2>
@@ -124,7 +109,7 @@ const Signup = () => {
               disabled={loading}
               className="auth-submit-button"
             >
-              {loading ? <Loader2 className="animate-spin" size={19} /> : 'Create Account'}
+              {loading ? <Loader2 size={19} /> : 'Create Account'}
               {!loading && <ArrowRight size={17} />}
             </button>
           </form>
@@ -134,7 +119,7 @@ const Signup = () => {
           <Link to="/login" className="auth-footer-link">
             Already have an account? Log in here
           </Link>
-        </motion.section>
+        </section>
       </main>
     </div>
   );

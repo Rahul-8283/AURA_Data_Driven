@@ -36,12 +36,12 @@ type Candidate = {
   capacity: string;
   retention: string;
   confidence: string;
-  tone: 'violet' | 'mint' | 'amber';
+  tone: 'brass' | 'moss' | 'amber';
 };
 
 const candidates: Candidate[] = [
-  { id: 'nmc-mg', composition: 'LiNi₀.₈₂Mn₀.₁₀Co₀.₀₆Mg₀.₀₂O₂', name: 'Mg-stabilized NMC', score: '0.91', capacity: '224 mAh/g', retention: '91%', confidence: 'High', tone: 'violet' },
-  { id: 'nmc-al', composition: 'LiNi₀.₈₀Mn₀.₁₀Co₀.₀₇Al₀.₀₃O₂', name: 'Al-gradient NMC', score: '0.88', capacity: '219 mAh/g', retention: '93%', confidence: 'High', tone: 'mint' },
+  { id: 'nmc-mg', composition: 'LiNi₀.₈₂Mn₀.₁₀Co₀.₀₆Mg₀.₀₂O₂', name: 'Mg-stabilized NMC', score: '0.91', capacity: '224 mAh/g', retention: '91%', confidence: 'High', tone: 'brass' },
+  { id: 'nmc-al', composition: 'LiNi₀.₈₀Mn₀.₁₀Co₀.₀₇Al₀.₀₃O₂', name: 'Al-gradient NMC', score: '0.88', capacity: '219 mAh/g', retention: '93%', confidence: 'High', tone: 'moss' },
   { id: 'nmc-ti', composition: 'LiNi₀.₇₈Mn₀.₁₂Co₀.₀₈Ti₀.₀₂O₂', name: 'Ti-buffered NMC', score: '0.84', capacity: '213 mAh/g', retention: '95%', confidence: 'Medium', tone: 'amber' },
 ];
 

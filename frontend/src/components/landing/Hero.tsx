@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, Menu, Sparkles, X } from 'lucide-react';
+import { ArrowRight, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import AuraMark from '../shared/AuraMark';
@@ -14,11 +14,12 @@ const Hero = () => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <section className="hero-section">
-      <div className="hero-aurora hero-aurora--one" />
-      <div className="hero-aurora hero-aurora--two" />
-      <div className="hero-noise" />
-
+  <motion.section 
+    className="hero-section"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.8 }}
+  >
       <div className="site-frame">
         <header className="site-nav">
           <Link to="/" aria-label="AURA home" className="site-nav__brand">
@@ -54,13 +55,8 @@ const Hero = () => {
         )}
 
         <div className="hero-grid">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="hero-copy"
-          >
-            <div className="eyebrow"><Sparkles size={14} /> Autonomous materials discovery</div>
+          <div className="hero-copy">
+            <div className="eyebrow"> Autonomous materials discovery</div>
             <h1>Make the next <em>breakthrough</em> feel inevitable.</h1>
             <p className="hero-copy__lede">
               AURA turns battery-material research into a living field of possibilities—grounded in literature,
@@ -78,14 +74,9 @@ const Hero = () => {
               </div>
               <p><strong>Built for the laboratory.</strong> Traceable reasoning from question to candidate.</p>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="hero-stage" aria-label="AURA material discovery visualization"
-          >
+          <div className="hero-stage" aria-label="AURA material discovery visualization">
             <div className="hero-stage__ring hero-stage__ring--outer" />
             <div className="hero-stage__ring hero-stage__ring--inner" />
             <span className="hero-stage__particle hero-stage__particle--one" />
@@ -123,7 +114,7 @@ const Hero = () => {
               <p>Mg doping may temper cation mixing at high voltage.</p>
               <span className="hero-insight-card__source">6 corroborating sources</span>
             </div>
-          </motion.div>
+          </div>
         </div>
 
         <div className="hero-marquee" aria-label="AURA capabilities">
@@ -133,7 +124,7 @@ const Hero = () => {
           <span>Lab-ready reports</span>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 };
 

@@ -126,7 +126,7 @@ const Login = () => {
               disabled={loading || !hasSupabaseConfig}
               className="auth-submit-button"
             >
-              {loading ? <Loader2 className="animate-spin" size={19} /> : 'Log In'}
+              {loading ? <Loader2 size={19} /> : 'Log In'}
               {!loading && <ArrowRight size={17} />}
             </button>
           </form>
@@ -139,7 +139,7 @@ const Login = () => {
             disabled={loading || !hasSupabaseConfig}
             className="auth-provider-button"
           >
-            {loading ? <Loader2 className="animate-spin" size={19} /> : <GitBranch size={19} />}
+            {loading ? <Loader2 size={19} /> : <GitBranch size={19} />}
             <span>{loading ? 'Opening secure sign in…' : 'Continue with GitHub'}</span>
           </button>
 
