@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
+from core.security import get_current_user
 
 # Load environment variables
 load_dotenv()
@@ -28,6 +29,16 @@ async def health_check():
         "success": True,
         "service": "ai-analysis-service",
         "status": "up"
+    }
+
+@app.get("/api/v1/protected", tags=["Auth Test"])
+async def protected_route(user = Depends(get_current_user)):
+    """A test endpoint to verify the Supabase JWT token."""
+    return {
+        "success": True,
+        "message": "You are securely authenticated!",
+        "user_email": user.email,
+        "user_id": user.id
     }
 
 if __name__ == "__main__":
