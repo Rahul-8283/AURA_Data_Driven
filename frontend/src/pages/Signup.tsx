@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import AuraMark from '../components/shared/AuraMark';
 import { supabase } from '../lib/supabase';
@@ -59,7 +59,7 @@ const Signup = () => {
 
       <main className="auth-layout">
         <section className="auth-intro">
-          <span className="eyebrow"><Sparkles size={14} /> Join the network</span>
+          <span className="eyebrow">Join the network</span>
           <h1>Start discovering.<br /><em>Start building.</em></h1>
           <p>Create an account to track your material searches and connect with the GraphRAG backend.</p>
 

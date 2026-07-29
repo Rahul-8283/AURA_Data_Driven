@@ -1,4 +1,4 @@
-import { ArrowUpRight, FlaskConical, Network, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowUpRight, FlaskConical, Network, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const features = [
@@ -34,7 +34,7 @@ const Features = () => (
     <div className="site-frame">
       <div className="section-heading section-heading--split">
         <div>
-          <span className="section-kicker"><Sparkles size={14} /> Designed for scientific taste</span>
+          <span className="section-kicker">Designed for scientific taste</span>
           <h2>Research has never been short on data.<br />It has been short on <em>clarity.</em></h2>
         </div>
         <p>AURA brings the whole discovery loop into focus, so every new direction begins with more signal and less speculation.</p>

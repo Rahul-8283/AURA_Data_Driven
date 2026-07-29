@@ -1,4 +1,4 @@
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -14,7 +14,7 @@ const CallToAction = () => (
     <div className="site-frame">
       <div className="cta-card">
         <div className="cta-card__content">
-          <span className="section-kicker"><Sparkles size={14} /> The next material is waiting</span>
+          <span className="section-kicker">The next material is waiting</span>
           <h2>Give your best questions<br />a more powerful <em>next step.</em></h2>
           <p>Open an AURA research space and turn a battery-material requirement into a path your team can evaluate with confidence.</p>
           <Link to="/login" className="button button--light">Enter AURA <ArrowRight size={17} /></Link>

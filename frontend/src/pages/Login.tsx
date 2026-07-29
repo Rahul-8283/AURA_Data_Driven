@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, GitBranch, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, GitBranch, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import AuraMark from '../components/shared/AuraMark';
@@ -78,7 +78,7 @@ const Login = () => {
           transition={{ duration: 0.6 }}
           className="auth-intro"
         >
-          <span className="eyebrow"><Sparkles size={14} /> Your discovery space</span>
+          <span className="eyebrow">Your discovery space</span>
           <h1>Less searching.<br /><em>More seeing.</em></h1>
           <p>Bring your next battery-material question into a space designed to keep intuition, evidence, and possibility in one frame.</p>
 
