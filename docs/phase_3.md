@@ -1,86 +1,96 @@
-# Phase 3: Document Processing & Embeddings (Detailed Implementation Plan)
+# Phase 3: GraphRAG Engine Integration (Detailed Implementation Plan)
 
 ## 1. Objective and Scope
-Phase 3 focuses on the data ingestion pipeline. We need to parse unstructured battery literature (PDFs, scientific text), chunk the text intelligently, generate dense semantic vectors using Hugging Face's `all-MiniLM-L6-v2` model, and store these vectors persistently in ChromaDB. This forms the retrieval half of our GraphRAG engine.
+Phase 3 is the critical integration step where the entire retrieval architecture comes together. We will build the **GraphRAG Engine**, a specialized service that fuses the semantic, unstructured contextual data from ChromaDB (built in Phase 1) with the structural, hard-rule factual data from Neo4j (built in Phase 2). This hybrid engine acts as the central source of truth for the Genetic Algorithm to validate its mutations and for the LLM to base its property predictions on later in the pipeline.
 
 ---
 
-## 2. Document Ingestion Pipeline (`app/services/ingestion/`)
+## 2. Graph Retrieval Logic (`app/services/retrieval/graph_search.py`)
 
-### 2.1 File Parsing (`parser.py`)
-- Implement utilities to read `.txt`, `.pdf`, and `.csv` files (for dataset metadata).
-- For PDFs (e.g., downloaded from arXiv or specific journals), use libraries like `PyMuPDF` (fitz) or `pdfplumber` to extract raw text while stripping out useless headers, footers, and references.
-- **Crucial Step:** Battery papers contain heavy chemical formulas. Ensure the parser does not corrupt subscripts (e.g., LiCoO2 must remain intact).
+### 2.1 Entity Extraction from Query
+When a validation or context query comes in (e.g., *"Is Mg doping effective for NMC cathodes to prevent cation mixing?"*), we cannot just throw this string into Neo4j. We must extract the target entities first.
+- Utilize a lightweight, fast LLM call (e.g., Claude Haiku or GPT-4o-mini) with a prompt strictly designed for Named Entity Recognition (NER).
+- **Prompt Logic:** "Identify the battery materials, elements, and degradation modes in the following query. Return a JSON list of strings."
+- Extract entities: `["Mg", "NMC", "cation mixing"]`.
+- Implement a fallback regex or dictionary lookup against the `seed_graph.json` elements if the LLM call fails or times out.
 
-### 2.2 Text Chunking (`chunker.py`)
-Because LLMs have context windows and embedding models have max token limits (usually 384 or 512 for MiniLM), we must chunk the text.
-- We will implement a custom `RecursiveCharacterTextSplitter` (similar to LangChain's logic).
-- **Parameters:**
-  - `chunk_size = 1000` characters.
-  - `chunk_overlap = 200` characters (to maintain context across page breaks).
-- Ensure chunks do not break mid-sentence, especially around complex chemical formulas.
+### 2.2 Cypher Graph Traversal
+Write a Python function that takes these extracted entities and pulls a highly relevant subgraph of their relationships.
+- **Variable-Hop Search:** We want to find how these entities relate to each other, even if they aren't directly connected (e.g., finding the path from Mg to Cation Mixing).
+```cypher
+// Cypher query to find paths connecting the extracted entities
+MATCH (n)
+WHERE n.name IN $entities
+MATCH p=(n)-[*1..2]-(m)
+// Filter out excessively dense hub nodes if necessary
+WITH p, [x in nodes(p) WHERE x.name IN $entities] as matched
+WHERE size(matched) >= 1
+RETURN p LIMIT 50
+```
+- **Path Serialization:** The raw Neo4j JSON response is unreadable to an LLM. Implement a parser that converts the Cypher paths into readable text sentences (e.g., *"NMC CAN_BE_DOPED_WITH Mg. Mg MITIGATES Cation Mixing."*).
 
 ---
 
-## 3. Hugging Face Embedding Configuration
+## 3. Vector Retrieval Logic (`app/services/retrieval/vector_search.py`)
 
-### 3.1 Model Setup (`app/services/embeddings.py`)
-Instead of running heavy local PyTorch installations, we will use the Hugging Face Inference API via ChromaDB's built-in functionality, OR via the standard `requests` library if more control is needed.
+### 3.1 Unstructured Context Fetching
+- Reuse the `search_literature` function built in Phase 1.
+- Take the exact same raw user query and run a cosine similarity search against the ChromaDB `battery_literature` collection.
+- Request the top 5 to 7 most relevant text chunks (e.g., paragraphs from papers detailing specific Mg doping experiments).
+- Extract the metadata (Paper Title, DOI) so that we can provide citations in the final output.
 
-- We will configure the embedding function to point to `sentence-transformers/all-MiniLM-L6-v2`.
-- **Why this model?** It is exceptionally fast, lightweight, and highly capable of mapping semantic relationships in scientific text.
+---
+
+## 4. Context Aggregation & Fusion (`app/services/retrieval/graph_rag.py`)
+
+### 4.1 The Concurrent Fusion Engine
+Because retrieval speed is critical when running inside a multi-generation Genetic Algorithm loop, we cannot run these searches sequentially. Create a unified `GraphRAGService` class that orchestrates both retrievers concurrently.
 
 ```python
-from chromadb.utils import embedding_functions
-from app.core.config import settings
+import asyncio
+from app.services.retrieval.graph_search import get_graph_context
+from app.services.retrieval.vector_search import get_vector_context
 
-def get_huggingface_embedding_function():
-    return embedding_functions.HuggingFaceEmbeddingFunction(
-        api_key=settings.HF_API_KEY,
-        model_name="sentence-transformers/all-MiniLM-L6-v2"
-    )
+class GraphRAGService:
+    @staticmethod
+    async def retrieve_context(query: str):
+        # Fire both I/O bound database queries simultaneously
+        graph_task = get_graph_context(query)
+        vector_task = get_vector_context(query)
+        
+        # Wait for both to resolve
+        graph_results, vector_results = await asyncio.gather(graph_task, vector_task)
+        
+        # Format and combine into a strict template
+        combined_context = f"""
+        === STRUCTURAL GRAPH RULES (Absolute Truths) ===
+        {graph_results}
+        
+        === LITERATURE EVIDENCE (Contextual Findings) ===
+        {vector_results}
+        """
+        return combined_context
 ```
+
+### 4.2 Deduplication and Re-ranking (Optimization)
+- If the context window gets too large, implement a basic text deduplicator. If a sentence in the vector DB exactly matches the logic of a graph rule, keep the graph rule (as it is more concise) and trim the vector context.
+- Implement a maximum token limit checker before returning the `combined_context` to prevent blowing up the downstream OpenRouter API limits.
 
 ---
 
-## 4. Vector Database (ChromaDB) Integration
+## 5. Building the Internal RAG API (`app/api/v1/endpoints/rag.py`)
 
-### 4.1 Collection Management (`app/db/chroma_client.py`)
-- Connect to the persistent ChromaDB client established in Phase 1.
-- Create a collection specifically for battery literature.
-
-```python
-def init_literature_collection(chroma_client):
-    embedding_fn = get_huggingface_embedding_function()
-    collection = chroma_client.get_or_create_collection(
-        name="battery_literature",
-        embedding_function=embedding_fn,
-        metadata={"hnsw:space": "cosine"}  # Optimal for sentence transformers
-    )
-    return collection
-```
-
-### 4.2 Batch Upsert Logic (`app/services/ingestion/upsert.py`)
-When processing hundreds of papers, we cannot send vectors one by one (API rate limits).
-- Implement a batching mechanism to group text chunks into batches of 100.
-- Extract metadata for each chunk (e.g., `paper_title`, `year`, `authors`, `doi`).
-- Generate unique UUIDs for each chunk to prevent duplication.
-- Call `collection.upsert(documents=[...], metadatas=[...], ids=[...])`.
-
----
-
-## 5. Vector Search Verification
-
-### 5.1 Query Implementation (`app/services/retrieval/vector_search.py`)
-Build a function to test the quality of the embeddings.
-- Implement `search_literature(query: str, n_results: int = 5)`.
-- The function will pass the user query (e.g., "What are the common dopants for NMC811 cathodes to prevent cation mixing?") through the Hugging Face embedding function and perform a vector similarity search in ChromaDB.
+To make the GraphRAG usable by the frontend dashboard (for manual queries) and testable via Postman/cURL, expose it as a REST endpoint.
+- Create a `POST /api/v1/rag/query` endpoint that accepts a `{"prompt": "string"}` payload.
+- Return a structured JSON response containing the fused context, the specific Neo4j paths triggered, and the metadata citations from ChromaDB.
 
 ---
 
 ## 6. Execution and Verification Checklist
-1. Prepare a folder with 5-10 sample battery research papers (PDF or TXT).
-2. Run a CLI script (e.g., `python -m app.scripts.ingest_papers`) to parse and chunk the documents.
-3. Verify that the Hugging Face API key is correctly generating vectors without throwing authentication errors.
-4. Verify that ChromaDB creates the `./chroma_data` directory and populates it with SQLite/Parquet files.
-5. Run a test query script to search for a specific battery term; verify that the top 5 results are highly relevant text chunks from the ingested papers.
+
+To sign off on Phase 3, you must thoroughly verify the hybrid engine:
+1. **Unit Testing:** Write a Pytest that mocks the ChromaDB and Neo4j responses to ensure the `retrieve_context` aggregator correctly formats the outputs.
+2. **Live Query Test:** Use the Swagger UI (`/docs`) to hit the `POST /api/v1/rag/query` endpoint with a complex chemical question: *"What happens to the thermal stability of LCO when doped with Aluminum?"*
+3. **Response Verification:** Check the JSON response payload. It MUST clearly demarcate the structured Graph output (e.g., `LCO CAN_BE_DOPED_WITH Al`) from the unstructured Vector output (e.g., paper paragraphs discussing Al-doped LiCoO2).
+4. **Performance Profiling:** Add time-tracking logs to `retrieve_context`. Ensure that thanks to `asyncio.gather`, the entire function executes and returns data in under 1.5 seconds. This speed is non-negotiable for the Genetic Algorithm.
+5. **Citation Check:** Verify that the vector chunks returned include the attached DOI/Title metadata so the frontend can display proper evidence links.

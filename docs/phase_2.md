@@ -1,134 +1,105 @@
-# Phase 2: Authentication & User Dashboard (Detailed Implementation Plan)
+# Phase 2: Knowledge Graph Construction (Detailed Implementation Plan)
 
 ## 1. Objective and Scope
-The goal of Phase 2 is to build the frontend architecture, establish secure user authentication via Supabase, and create the foundational dashboard where researchers will submit their battery material requirements. By the end of this phase, a user should be able to sign up, log in, view a protected dashboard, and submit a form that successfully communicates securely with the FastAPI backend.
+While Phase 1 captured unstructured semantic text, Phase 2 focuses entirely on capturing **structured chemical rules**. We will extract specific entities (elements, materials, properties) and their definitive relationships from the battery literature and store them in Neo4j. This forms the rigid "graph" half of our GraphRAG engine, which is absolutely crucial for preventing the Genetic Algorithm from making physically impossible mutations that sound plausible to an LLM.
 
 ---
 
-## 2. Supabase Authentication Setup (Frontend)
+## 2. Neo4j Schema & Constraint Design
 
-### 2.1 Initialization (`src/lib/supabase.ts`)
-We will use the official `@supabase/supabase-js` client.
-```typescript
-import { createClient } from '@supabase/supabase-js'
+Before extracting data, we must define strict constraints in our Neo4j database to ensure data integrity and prevent duplicated nodes when multiple papers mention the same element.
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+### 2.1 Node Labels & Properties
+- `Element`: The atomic building blocks (e.g., Li, Ni, Co, Mn, O, Mg, Al).
+  - Properties: `symbol` (String, Unique), `name` (String), `group` (Integer).
+- `Material`: The complex battery compounds (e.g., LCO, NMC811, LFP).
+  - Properties: `name` (String, Unique), `class` (String: cathode/anode/electrolyte).
+- `Property`: The electrochemical behaviors (e.g., High Capacity, Low Voltage, Poor Stability).
+  - Properties: `name` (String, Unique).
+- `DegradationMode`: Failure mechanisms (e.g., Cation Mixing, Phase Transition, Microcracking).
+  - Properties: `name` (String, Unique).
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase environment variables")
-}
+### 2.2 Approved Relationship Types
+To keep the graph queryable, we strictly enforce a limited ontology of edges:
+- `(Material)-[:CONTAINS]->(Element)`: Defines the base stoichiometry.
+- `(Material)-[:CAN_BE_DOPED_WITH]->(Element)`: Defines viable dopants.
+- `(Material)-[:EXHIBITS]->(Property)`: Links a material to its observed performance.
+- `(Material)-[:SUFFERS_FROM]->(DegradationMode)`: Links a material to its known flaws.
+- `(Element)-[:MITIGATES]->(DegradationMode)`: Defines how an element acts as a fix.
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
-```
-
-### 2.2 Auth Context Provider (`src/contexts/AuthContext.tsx`)
-Create a React Context to manage the user session globally.
-- Implement `useEffect` to listen to `supabase.auth.onAuthStateChange`.
-- Export custom hook `useAuth()` exposing `user`, `session`, and `isLoading`.
-
-### 2.3 Login & Registration UI (`src/pages/Auth/`)
-- **Login Component:** Use TailwindCSS for a modern, glassmorphic design. Include email/password fields and OAuth buttons (Google/GitHub if desired).
-- **Signup Component:** Standard email registration flow.
-- Add `framer-motion` for smooth page transitions between Login and Signup.
-
----
-
-## 3. Global State Management (Zustand)
-
-### 3.1 Store Definition (`src/store/useResearchStore.ts`)
-Create a Zustand store to handle the state of the active research task.
-```typescript
-import { create } from 'zustand'
-
-interface ResearchState {
-  currentTaskId: string | null;
-  taskStatus: 'idle' | 'processing' | 'completed' | 'error';
-  progress: number;
-  logs: string[];
-  setTaskId: (id: string) => void;
-  updateStatus: (status: any, progress: number) => void;
-  addLog: (log: string) => void;
-  reset: () => void;
-}
-
-export const useResearchStore = create<ResearchState>((set) => ({
-  currentTaskId: null,
-  taskStatus: 'idle',
-  progress: 0,
-  logs: [],
-  setTaskId: (id) => set({ currentTaskId: id, taskStatus: 'processing' }),
-  updateStatus: (status, progress) => set({ taskStatus: status, progress }),
-  addLog: (log) => set((state) => ({ logs: [...state.logs, log] })),
-  reset: () => set({ currentTaskId: null, taskStatus: 'idle', progress: 0, logs: [] }),
-}))
+### 2.3 Indexing Setup Script (`app/db/neo4j_setup.py`)
+Write a dedicated script that executes upon server startup to create unique constraints.
+```cypher
+// Ensure idempotency using IF NOT EXISTS
+CREATE CONSTRAINT element_symbol IF NOT EXISTS FOR (e:Element) REQUIRE e.symbol IS UNIQUE;
+CREATE CONSTRAINT material_name IF NOT EXISTS FOR (m:Material) REQUIRE m.name IS UNIQUE;
+CREATE CONSTRAINT property_name IF NOT EXISTS FOR (p:Property) REQUIRE p.name IS UNIQUE;
+CREATE CONSTRAINT degradation_name IF NOT EXISTS FOR (d:DegradationMode) REQUIRE d.name IS UNIQUE;
 ```
 
 ---
 
-## 4. Protected Routing (`src/App.tsx`)
+## 3. Entity & Relationship Extraction Pipeline
 
-Implement `react-router-dom` with route guards.
-- Wrap the `<Dashboard />` route in a `<ProtectedRoute>` component that checks `useAuth().session`. If null, redirect to `/login`.
-- Define routes:
-  - `/` -> Landing Page
-  - `/login` -> Auth Page
-  - `/dashboard` -> Main Application Interface
-  - `/results/:taskId` -> Research Output View
+### 3.1 LLM-Based Extraction Service (`app/services/graph/extractor.py`)
+Standard NLP tools (like Spacy or NLTK) fail at parsing complex battery chemistry. We will use a lightweight, highly-instructed LLM call (via OpenRouter using a fast model like Claude 3 Haiku) to parse chunks of text and extract JSON tuples.
 
----
+- **Prompt Engineering:** Instruct the LLM to identify specific entities and relationships from a text chunk and return a strict JSON array of triplets.
+- Provide few-shot examples in the prompt to ensure the LLM maps terms strictly to our approved ontology.
+  - *Example Text:* "We found that adding trace amounts of Magnesium to NMC811 significantly reduced cation mixing during high voltage cycling."
+  - *Expected Output:*
+    ```json
+    [
+      {"subject_label": "Material", "subject": "NMC811", "predicate": "CAN_BE_DOPED_WITH", "object_label": "Element", "object": "Mg"},
+      {"subject_label": "Element", "subject": "Mg", "predicate": "MITIGATES", "object_label": "DegradationMode", "object": "Cation Mixing"},
+      {"subject_label": "Material", "subject": "NMC811", "predicate": "SUFFERS_FROM", "object_label": "DegradationMode", "object": "Cation Mixing"}
+    ]
+    ```
 
-## 5. Main Dashboard UI (`src/pages/Dashboard/`)
-
-### 5.1 Sidebar Layout (`src/components/Layout/Sidebar.tsx`)
-- Use `lucide-react` for icons (e.g., Home, History, Settings).
-- Provide navigation to past research runs (fetching from Supabase database).
-
-### 5.2 Research Input Form (`src/components/Dashboard/RequirementForm.tsx`)
-This is the core interaction point.
-- **Form Fields:**
-  - `Base Component Type`: Dropdown (Cathode, Anode, Solid Electrolyte).
-  - `Target Capacity`: Number input (mAh/g).
-  - `Target Cycle Life`: Number input.
-  - `Custom Instructions`: Textarea (e.g., "Must avoid Cobalt due to cost constraints").
-- **Validation:** Use `react-hook-form` and `zod` to validate inputs before submission.
+### 3.2 Processing the ChromaDB Chunks
+- Create a background task that iterates through the text chunks generated and stored in Phase 1.
+- Pass each chunk to the LLM extraction service concurrently (batching 10 at a time).
+- Validate the resulting JSON using Pydantic. If the LLM hallucinates an unapproved `predicate`, log a warning and discard the triplet.
 
 ---
 
-## 6. Frontend-Backend Secure Integration
+## 4. Neo4j Data Ingestion
 
-### 6.1 Axios Interceptor Setup (`src/lib/api.ts`)
-To securely communicate with FastAPI, we must attach the Supabase JWT token to every request.
-```typescript
-import axios from 'axios';
-import { supabase } from './supabase';
+### 4.1 Cypher Merge Logic (`app/services/graph/ingestion.py`)
+We must use the `MERGE` clause (not `CREATE`) to avoid duplicating nodes and edges when multiple papers mention the exact same facts.
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
-});
-
-api.interceptors.request.use(async (config) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
-  }
-  return config;
-});
-
-export default api;
+- Build a generic, safe function to execute Cypher queries dynamically based on the validated Pydantic triplets.
+```python
+def merge_relationship(tx, subject_label, subject_val, predicate, object_label, object_val):
+    # Using parameterized queries prevents Cypher injection and improves performance
+    query = f"""
+    MERGE (s:{subject_label} {{name: $subject_val}})
+    MERGE (o:{object_label} {{name: $object_val}})
+    MERGE (s)-[:{predicate}]->(o)
+    """
+    tx.run(query, subject_val=subject_val, object_val=object_val)
 ```
-
-### 6.2 FastAPI JWT Validation (Backend)
-- In the FastAPI backend (`app/core/security.py`), implement a dependency to decode and verify the JWT sent from the React frontend.
-- Ensure the JWT is signed with the `SUPABASE_JWT_SECRET`.
-- Apply this dependency to the `POST /api/v1/research/start` endpoint.
+- Wrap multiple `merge_relationship` calls inside a single database transaction `session.execute_write()` to massively speed up insertion times.
 
 ---
 
-## 7. Execution and Verification Checklist
-1. User can successfully sign up and log in via the React frontend.
-2. The user is redirected to `/dashboard` upon successful login.
-3. The JWT token is visible in local storage or memory.
-4. Submitting the Research Input Form successfully triggers the `axios` POST request to the backend.
-5. The backend validates the JWT and rejects unauthorized requests with a 401 error.
-6. The Zustand store successfully updates to `processing` state upon receiving a dummy `task_id` from the backend.
+## 5. Pre-populating Known Baselines (The Ground Truth)
+
+Relying solely on LLM extraction from text can be noisy. The LLM might extract "Lithium is a transition metal" if a paper has a typo.
+- Create a `data/seed_graph.json` file containing hardcoded, indisputable battery physics.
+  - Elements: Li, Ni, Co, Mn, O, Mg, Al, Zr with their correct periodic groups.
+  - Core Materials: Base compositions for LCO, NMC111, NMC532, NMC811, LFP.
+  - Known Degradations: Cation mixing occurs between Ni and Li.
+- Write a startup script (`app.scripts.seed_neo4j`) to ingest this seed data into Neo4j *before* extracting from literature. This guarantees a foundational ground-truth for the validation agent that cannot be overwritten by noisy extraction.
+
+---
+
+## 6. Execution and Verification Checklist
+
+To successfully close out Phase 2, verify the following:
+1. **Database Connection:** Verify Neo4j is running (via Docker or local install) and accessible on `bolt://localhost:7687`. Check the FASTAPI logs to ensure the driver connects on boot.
+2. **Schema Verification:** Run the constraint initialization script. Open the Neo4j Browser (`http://localhost:7474`) and run `SHOW CONSTRAINTS` to ensure they are active.
+3. **Seed Data:** Run the `seed_neo4j` script. Visually verify the core nodes and relationships in the Neo4j Bloom/Browser UI. Ensure elements like 'Li' and 'Ni' exist and are connected correctly.
+4. **Extraction Test:** Process a small batch (e.g., 50 chunks) of the papers ingested in Phase 1 through the LLM extractor.
+5. **Graph Integrity:** Query Neo4j to verify that novel edges (e.g., `[:CAN_BE_DOPED_WITH]`) are correctly attached to the core materials without creating duplicate nodes for "NMC811".
+6. **Error Handling:** Ensure the pipeline does not crash if the LLM returns malformed JSON, but gracefully logs the error and moves to the next chunk.

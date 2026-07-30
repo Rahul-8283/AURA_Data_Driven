@@ -1,73 +1,66 @@
-# Phase 8: LLM Property Prediction (Detailed Implementation Plan)
+# Phase 8: Final Reporting & Frontend Visualization (Detailed Plan)
 
 ## 1. Objective and Scope
-Once the Genetic Algorithm creates a new population of mutated battery materials (Phase 7), we must evaluate how "good" they are. Instead of training a complex ML model from scratch, we will use a top-tier LLM (via OpenRouter) instructed to act as a computational material scientist. This logic resides in the LangGraph `predictor_node`.
+Phase 8 is the final phase of the AURA project. It focuses entirely on delivering actionable, visually stunning, and highly professional results to the researcher. We will build the LangGraph `reporter_node` to aggregate the findings and save them to Supabase. We will then build the React frontend views to render the results, charts, and the interactive Knowledge Graph.
 
 ---
 
-## 2. OpenRouter API Integration (`app/services/llm/client.py`)
+## 2. The Reporter Node & Storage (`app/agents/nodes/reporter.py`)
 
-### 2.1 Setup
-- Import the standard `openai` Python package.
-- Configure the client to point to OpenRouter.
-```python
-from openai import AsyncOpenAI
-from app.core.config import settings
+This is the final node in the LangGraph workflow, executed only when `current_generation == max_generations` or if the loop is manually terminated.
 
-client = AsyncOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=settings.OPENROUTER_API_KEY,
-)
-```
-- Create a reusable wrapper function `predict_properties(material_composition: str, context: str)` that handles API retries and timeout errors.
+### 2.1 Aggregation and LLM Summarization
+- Take the absolute top 5 materials from the `best_candidates` array in the `ResearchState`.
+- Pass these 5 candidates, along with the user's original prompt, to OpenRouter.
+- **Prompt:** *"You are writing the executive summary for a battery material discovery report. Review the user's initial request and the top 5 materials the AI discovered. Write a highly professional, 3-paragraph summary explaining the evolutionary path taken, why these specific materials outcompete standard baselines, and what their primary trade-offs are based on their predicted properties."*
+- Store this summary in the `ResearchState`.
 
----
-
-## 3. Prompt Engineering & GraphRAG Injection
-
-The LLM is prone to hallucination. To prevent this, we must inject the solid literature evidence we gathered via GraphRAG (Phase 5).
-
-### 3.1 System Prompt Design
-Craft a highly constrained system prompt.
-- **Role:** *"You are an expert computational battery chemist."*
-- **Task:** *"Estimate the specific capacity (mAh/g), nominal voltage (V), cycle life, and cost impact of the provided battery material composition."*
-- **Constraint:** *"You MUST base your prediction on the provided GraphRAG literature context. Do not invent properties. If a dopant in the composition is known to reduce capacity but increase stability based on the context, adjust your numbers accordingly."*
-
-### 3.2 Output Formatting (Strict JSON)
-We need numerical values to calculate fitness scores later. The LLM must return JSON.
-- Instruct the LLM to output a precise JSON structure.
-- Use `response_format={"type": "json_object"}` in the API call.
-- Define a Pydantic schema to validate the output:
-```python
-from pydantic import BaseModel
-
-class PredictionResult(BaseModel):
-    specific_capacity: float
-    voltage: float
-    cycle_life: int
-    cost_estimate_usd_kg: float
-    reasoning: str
-```
+### 2.2 Supabase Database Storage
+- Import the initialized Supabase client.
+- Insert the final JSON payload (Top 5 materials, properties, LLM reasoning, and executive summary) into the `ResearchTasks` table in PostgreSQL.
+- Update the specific row's status to `completed`.
+- Insert individual material records into a `SavedMaterials` table with a foreign key linking back to the user and the task, so the user can easily reference them later in their dashboard history.
 
 ---
 
-## 4. The Predictor Node Logic (`app/agents/nodes/predictor.py`)
+## 3. Frontend Results Dashboard (`src/pages/Results/`)
 
-Implement the LangGraph node execution.
-1. Read the `current_population` from the `ResearchState`.
-2. For each material in the population:
-   - Call the GraphRAG Engine (Phase 5) with the prompt: *"What are the electrochemical properties of {material}?"*
-   - Pass the material composition and the GraphRAG context to the LLM via OpenRouter.
-   - Parse the JSON response.
-   - Attach the predicted properties (`capacity`, `voltage`, etc.) directly to the material dictionary in the population list.
-3. **Async Batching:** Make sure to use `asyncio.gather` to predict properties for the entire population of 20 materials concurrently to save time.
-4. Update the `ResearchState` with the newly annotated `current_population`.
+Once the frontend finishes polling the backend and sees `status: 'completed'`, it immediately redirects the user to the `Results` view using React Router.
+
+### 3.1 Material Cards & Recharts Integration
+- Build highly polished, glassmorphic interactive cards displaying the exact stoichiometry of the Top 5 materials.
+- Implement **Recharts** to visualize the data:
+  - **Radar Chart:** Compare the predicted Capacity, Voltage, Cycle Life, and Cost against a standard baseline (like NMC811). This allows the researcher to visually see the trade-offs at a glance.
+  - **Evolution Line Chart:** Plot the `best_score` and `average_score` of the population across all 20 generations. This chart serves as mathematical proof that the Genetic Algorithm actually worked and evolved better materials over time.
+
+### 3.2 Interactive Graph Visualization (`react-force-graph-2d`)
+Give the researcher a visual representation of the chemistry rules that validated the top material. This builds immense trust in the AI's predictions.
+- **Backend API:** Create a new `GET /api/v1/graph/material/{material_name}` endpoint. This queries Neo4j for the material, its constituent elements, and its properties, returning a standard `{ nodes: [], links: [] }` JSON object.
+- **Frontend Component:** Implement the `ForceGraph2D` component to render this data. 
+  - Color code the nodes (e.g., Red for Degradation Modes, Green for Positive Properties, Blue for Elements, Gold for the Material itself).
+  - Enable node dragging, zooming, and hover tooltips so the user can interactively explore why the material behaves the way it does.
 
 ---
 
-## 5. Execution and Verification Checklist
-1. Write a standalone test script passing a known material (e.g., `LiNi0.8Co0.1Mn0.1O2`) to the prediction function with relevant context.
-2. Verify that the OpenRouter API returns a valid JSON object.
-3. Parse the JSON through the Pydantic `PredictionResult` schema to ensure type safety (e.g., capacity is a float, not a string).
-4. Verify the `reasoning` field provides a logical chemical explanation based on the injected context.
-5. Ensure parallel execution (`asyncio.gather`) processes 20 items in under 30 seconds to prevent API timeouts.
+## 4. UI Polish & PDF Export
+
+### 4.1 Framer Motion Animations & Lenis
+- Wrap the rendering of the Material Cards and Charts in a `framer-motion` stagger effect so they smoothly fade in one by one as the user scrolls down the page.
+- Ensure `lenis` smooth scrolling is fully active on the report page to maintain the ultra-premium feel established in Phase 0.
+
+### 4.2 PDF Export Functionality
+Researchers need to share these findings with their labs.
+- Add a highly visible "Download Full Report" button.
+- Use a library like `jspdf` and `html2canvas` (or `react-to-print`) to convert the rendered React view—including the rendered charts and the executive summary—into a perfectly formatted, downloadable PDF.
+
+---
+
+## 5. Final Execution and Verification Checklist
+
+1. **End-to-End Test:** Run a complete end-to-end task from the UI Dashboard. Submit a prompt, wait for the loading screen (polling), and wait for the redirect.
+2. **Database Verification:** Verify that upon completion, the Supabase PostgreSQL tables (`ResearchTasks` and `SavedMaterials`) successfully contain the final JSON report and that the user's dashboard history updates.
+3. **Rendering Verification:** Ensure the React UI correctly fetches the completed data and renders the Radar charts without crashing due to undefined data.
+4. **Graph Verification:** Verify that the Force Graph component correctly queries Neo4j, receives the JSON, and dynamically renders the chemical relationships on screen without overlapping nodes completely.
+5. **PDF Verification:** Click the Download PDF button. Verify that the layout integrity is maintained in the downloaded file and the charts are visible (not blank squares).
+
+**AURA Implementation Complete!**

@@ -1,145 +1,131 @@
-# Phase 1: Project Setup & Core Infrastructure (Detailed Implementation Plan)
+# Phase 1: Document Processing & Embeddings (Detailed Implementation Plan)
 
 ## 1. Objective and Scope
-The goal of Phase 1 is to establish the complete backend foundation for **AURA (Autonomous Unified Research Assistant)**. By the end of this phase, the application must be able to boot up, connect to all three databases (Supabase/PostgreSQL, ChromaDB, Neo4j), and successfully initialize the Celery worker with Redis for handling asynchronous AI tasks. No UI or agent logic will be built in this phase; the focus is strictly on robust plumbing, logging, and infrastructure configuration.
+Phase 1 focuses exclusively on the data ingestion pipeline. The goal is to build a highly robust, fault-tolerant system capable of parsing unstructured battery literature (e.g., scientific papers in PDF format, CSV datasets), chunking the text intelligently while preserving complex chemical formulas, generating dense semantic vectors using Hugging Face's `all-MiniLM-L6-v2` model, and persisting these vectors in ChromaDB. This is the foundation of the vector retrieval half of our GraphRAG engine.
 
 ---
 
-## 2. Directory Structure Setup
-Begin by establishing a scalable, modular architecture for the FastAPI application. We will strictly adhere to separation of concerns.
+## 2. Document Ingestion Pipeline (`app/services/ingestion/`)
 
-```text
-backend/
-├── app/
-│   ├── api/
-│   │   ├── v1/
-│   │   │   ├── endpoints/
-│   │   │   │   ├── health.py
-│   │   │   │   ├── auth.py
-│   │   │   │   └── research.py
-│   │   │   └── router.py
-│   ├── core/
-│   │   ├── config.py          # Pydantic BaseSettings for env vars
-│   │   ├── security.py        # Supabase JWT validation
-│   │   ├── celery_app.py      # Celery worker configuration
-│   ├── db/
-│   │   ├── supabase.py        # Supabase client initialization
-│   │   ├── neo4j_client.py    # Neo4j driver wrapper
-│   │   ├── chroma_client.py   # Persistent ChromaDB client
-│   ├── models/                # SQLAlchemy ORM models (if used directly)
-│   ├── schemas/               # Pydantic validation schemas (Input/Output)
-│   ├── services/              # Business logic (where LangGraph will live later)
-│   └── main.py                # FastAPI entry point
-├── worker/
-│   └── tasks.py               # Celery task definitions
-├── .env                       # Environment variables
-├── requirements.txt
-└── README.md
+### 2.1 File Parsing Architecture (`parser.py`)
+Scientific literature parsing is notoriously difficult due to two-column layouts, charts, and mathematical notation.
+- Implement a `DocumentParser` base class with concrete implementations for `PDFParser`, `TXTParser`, and `CSVParser`.
+- **PDF Extraction:** Use `PyMuPDF` (fitz). Implement a heuristic algorithm to identify and strip out:
+  - Page headers and footers.
+  - The "References" or "Bibliography" section (to prevent the LLM from searching through citations).
+  - Acknowledgements.
+- **Formula Preservation:** Battery papers contain heavy chemical formulas (e.g., $LiNi_{0.8}Co_{0.1}Mn_{0.1}O_2$). Ensure the parser does not corrupt subscripts. If using OCR, configure it to favor chemical/mathematical parsing.
+
+### 2.2 Advanced Text Chunking (`chunker.py`)
+Standard character splitters often cut in the middle of crucial scientific context.
+- Implement a custom `SemanticTextSplitter` extending LangChain's `RecursiveCharacterTextSplitter`.
+- **Configuration:**
+  - `chunk_size = 1000` characters (approx. 200-250 tokens).
+  - `chunk_overlap = 200` characters (ensuring context isn't lost across page breaks).
+  - `separators = ["\n\n", "\n", ".", " ", ""]` to ensure splits happen at paragraph or sentence boundaries.
+- **Validation:** Add a regex check during chunking to ensure a chemical formula (e.g., matched by `[A-Z][a-z]?\d*\.?\d*`) is never split in half.
+
+---
+
+## 3. Hugging Face Embedding Configuration
+
+### 3.1 Model Setup (`app/services/embeddings.py`)
+Instead of running heavy local PyTorch installations, we will use the Hugging Face Inference API via ChromaDB's built-in functionality.
+- We will configure the embedding function to point to `sentence-transformers/all-MiniLM-L6-v2`.
+- **Why this model?** It is exceptionally fast, lightweight (384-dimensional vectors), and highly capable of mapping semantic relationships in scientific text without the latency of OpenAI's `text-embedding-3`.
+
+```python
+import os
+from chromadb.utils import embedding_functions
+from app.core.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_huggingface_embedding_function():
+    try:
+        if not settings.HF_API_KEY:
+            raise ValueError("Hugging Face API key is missing.")
+            
+        return embedding_functions.HuggingFaceEmbeddingFunction(
+            api_key=settings.HF_API_KEY,
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
+    except Exception as e:
+        logger.error(f"Failed to initialize embedding function: {str(e)}")
+        raise
 ```
 
 ---
 
-## 3. Configuration Management (`app/core/config.py`)
-To prevent random `os.getenv` calls scattered throughout the code, we will use `pydantic-settings` to strictly type and validate all required environment variables on startup.
+## 4. Vector Database (ChromaDB) Integration
 
-### Implementation Steps:
-1. Create `Settings` class inheriting from `pydantic_settings.BaseSettings`.
-2. Define the following strict fields:
-   - **FastAPI:** `PROJECT_NAME`, `API_V1_STR`
-   - **Supabase:** `SUPABASE_URL`, `SUPABASE_KEY`
-   - **ChromaDB:** `CHROMA_PERSIST_DIRECTORY` (e.g., `./chroma_data`)
-   - **Neo4j:** `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`
-   - **Redis/Celery:** `REDIS_URL` (e.g., `redis://localhost:6379/0`)
-3. If any field is missing during startup, the application should crash immediately with a clear error message.
+### 4.1 Collection Management (`app/db/chroma_client.py`)
+- Connect to the persistent ChromaDB client established in Phase 0.
+- Create a collection specifically for battery literature, configured for cosine similarity which works best with Sentence Transformers.
 
----
+```python
+def init_literature_collection(chroma_client):
+    """Initializes and returns the battery literature collection."""
+    embedding_fn = get_huggingface_embedding_function()
+    collection = chroma_client.get_or_create_collection(
+        name="battery_literature",
+        embedding_function=embedding_fn,
+        metadata={"hnsw:space": "cosine"}  # Crucial for accuracy
+    )
+    return collection
+```
 
-## 4. Database Clients Initialization
-
-### 4.1 Supabase Configuration (`app/db/supabase.py`)
-- Import `create_client` from the `supabase` python package.
-- Initialize the client as a singleton using the config variables.
-- Write a `get_supabase_client()` dependency function to be injected into FastAPI routes.
-- **Goal:** Allow the backend to verify user JWTs and potentially interact with the `ResearchTasks` relational table.
-
-### 4.2 ChromaDB Configuration (`app/db/chroma_client.py`)
-- Import `chromadb`.
-- Initialize `PersistentClient(path=settings.CHROMA_PERSIST_DIRECTORY)`.
-- It is critical to use the **PersistentClient**, not the EphemeralClient, so that battery literature embeddings are saved to the local disk.
-- Write a helper function `get_chroma_collection(name: str)` that performs `get_or_create_collection`.
-
-### 4.3 Neo4j Configuration (`app/db/neo4j_client.py`)
-- Import `GraphDatabase` from the `neo4j` package.
-- Build a `Neo4jConnection` class that manages the driver lifecycle (opening and closing connections).
-- Write a `verify_connectivity()` method that runs a simple `RETURN 1` cypher query to ensure the database is reachable on boot.
+### 4.2 Batch Upsert Logic (`app/services/ingestion/upsert.py`)
+When processing hundreds of papers, we cannot send vectors one by one due to network overhead and API rate limits.
+- Implement an async `batch_upsert` function.
+- Group text chunks into batches of 100.
+- Extract and attach structured metadata to each chunk:
+  - `paper_title`
+  - `year`
+  - `authors`
+  - `doi`
+  - `page_number`
+- Generate deterministic UUIDs based on a hash of the `(doi, chunk_index)` to prevent duplication if the same paper is ingested twice.
+- Implement exponential backoff for the Hugging Face API if a 429 Too Many Requests response is hit during batch embedding.
 
 ---
 
-## 5. Asynchronous Task Queue Setup (Celery + Redis)
+## 5. Vector Search Verification & Tuning
 
-Since the Genetic Algorithm will take minutes to run, it cannot block the HTTP requests.
-
-### 5.1 Celery App Initialization (`app/core/celery_app.py`)
-- Instantiate the Celery app:
-  ```python
-  from celery import Celery
-  from app.core.config import settings
-  
-  celery_app = Celery(
-      "aura_worker",
-      broker=settings.REDIS_URL,
-      backend=settings.REDIS_URL
-  )
-  
-  # Configure serialization
-  celery_app.conf.update(
-      task_serializer='json',
-      accept_content=['json'],
-      result_serializer='json',
-      timezone='UTC',
-      enable_utc=True,
-  )
-  ```
-
-### 5.2 Initial Task Definitions (`worker/tasks.py`)
-- Create a dummy background task to verify the worker pipeline is functioning.
-  ```python
-  from app.core.celery_app import celery_app
-  import time
-  
-  @celery_app.task(bind=True, name="test_dummy_task")
-  def test_dummy_task(self, iterations: int):
-      for i in range(iterations):
-          time.sleep(1)
-          # Update internal state for frontend polling
-          self.update_state(state='PROGRESS', meta={'current': i, 'total': iterations})
-      return {"status": "Complete", "result": f"Processed {iterations} items."}
-  ```
+### 5.1 Query Implementation (`app/services/retrieval/vector_search.py`)
+Build a modular function to test the quality of the embeddings and retrieve context.
+```python
+def search_literature(collection, query: str, n_results: int = 5, filter_metadata: dict = None):
+    """
+    Searches the ChromaDB collection for the most relevant literature chunks.
+    Allows optional metadata filtering (e.g., year > 2020).
+    """
+    results = collection.query(
+        query_texts=[query],
+        n_results=n_results,
+        where=filter_metadata
+    )
+    
+    # Format the results into a readable list of dictionaries
+    formatted_results = []
+    for i in range(len(results['documents'][0])):
+        formatted_results.append({
+            "content": results['documents'][0][i],
+            "metadata": results['metadatas'][0][i],
+            "distance": results['distances'][0][i]
+        })
+    return formatted_results
+```
 
 ---
 
-## 6. FastAPI Core Integration (`app/main.py`)
+## 6. Execution and Verification Checklist
 
-### 6.1 Server Instantiation
-- Update the existing `main.py` to utilize the new modular router architecture.
-- Include the `APIRouter` from `app/api/v1/router.py`.
-- Configure `CORSMiddleware` to strictly allow requests from the React frontend port (usually `http://localhost:5173`).
-
-### 6.2 Health Check & Verification Endpoints (`app/api/v1/endpoints/health.py`)
-Build extensive health checks to confirm infrastructure is ready before taking user traffic.
-- **`GET /health`**: Returns basic up-status.
-- **`GET /health/db`**: Attempts to ping Supabase, Neo4j, and ChromaDB. Returns detailed JSON status for each.
-- **`POST /test-celery`**: Triggers the `test_dummy_task` and returns the `task_id`.
-- **`GET /task/{task_id}`**: Retrieves the live status of the Celery task from Redis.
-
----
-
-## 7. Execution and Verification Checklist
-Before concluding Phase 1, the following must be verified via terminal:
-1. `redis-server` must be running locally.
-2. The Celery worker must boot successfully via `celery -A app.core.celery_app worker --loglevel=info`.
-3. The FastAPI server must start via `uvicorn app.main:app --reload`.
-4. Hitting `POST /test-celery` should successfully dispatch a job to the Celery worker window.
-5. Hitting `GET /health/db` should show `status: connected` for Neo4j and ChromaDB.
-
-*Once this phase is signed off, the backend is robust enough to begin handling actual users and GraphRAG processing in the subsequent phases.*
+To sign off on Phase 1, you must manually complete and verify the following steps:
+1. **Data Prep:** Prepare a folder (`/data/raw/papers`) with 5-10 sample battery research papers (PDF). Include papers discussing specific dopants (e.g., Mg doping in NMC).
+2. **Ingestion Script:** Run the CLI script `python -m app.scripts.ingest_papers --dir ./data/raw/papers`.
+3. **Log Verification:** Check the terminal output to ensure that the PDF parser correctly stripped headers/references, chunked the text, and generated batches of 100 without raising memory errors.
+4. **Persistence Check:** Stop the FastAPI server. Verify that the `./chroma_data` directory has increased in size. Restart the server and verify the collection count persists.
+5. **Retrieval Test:** Run `python -m app.scripts.test_vector_search "What happens to cycle life when NMC811 is doped with Mg?"`
+6. **Relevance Validation:** Verify that the top 5 results are highly relevant text chunks from the ingested papers and that the distances returned indicate strong semantic matches (usually < 0.3 for cosine distance on highly relevant chunks).
