@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "AURA"
@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     CHROMA_DATABASE: str
     CHROMA_PERSIST_DIRECTORY: str = "./chroma_data"
     
+    # LLM/Embeddings
+    HF_API_key: str
+    gemini_api_key: str
+    
     # Neo4j
     NEO4J_URI: str
     NEO4J_USERNAME: str
@@ -21,7 +25,6 @@ class Settings(BaseSettings):
     # Redis/Celery
     REDIS_URL: str = "redis://localhost:6379/0"
     
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
