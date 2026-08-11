@@ -1,45 +1,30 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
-from core.security import get_current_user
 
 # Load environment variables
 load_dotenv()
 
+from app.core.config import settings
+from app.api.v1.router import api_router
+
 app = FastAPI(
-    title="Transformation Intelligence AI Engine",
-    description="Core AI analysis engine for breaking down monoliths into microservices.",
+    title=settings.PROJECT_NAME,
+    description="Core AI analysis engine for AURA.",
     version="1.0.0"
 )
 
 # CORS configuration to allow the API Gateway to talk to this service
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, restrict this to the API gateway URL
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/health", tags=["Health"])
-async def health_check():
-    """Simple health check endpoint."""
-    return {
-        "success": True,
-        "service": "ai-analysis-service",
-        "status": "up"
-    }
-
-@app.get("/api/v1/protected", tags=["Auth Test"])
-async def protected_route(user = Depends(get_current_user)):
-    """A test endpoint to verify the Supabase JWT token."""
-    return {
-        "success": True,
-        "message": "You are securely authenticated!",
-        "user_email": user.email,
-        "user_id": user.id
-    }
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 if __name__ == "__main__":
     import uvicorn
