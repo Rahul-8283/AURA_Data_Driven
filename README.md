@@ -120,3 +120,63 @@ After running multiple GA generations, materials are ranked by a fitness score (
 | **Knowledge Graph** | Neo4j | Graph database storing battery elements, materials, properties, and their complex electrochemical relationships. |
 | **Vector Database** | ChromaDB (Persistent Storage) | Lightweight, high-performance vector database configured for local persistent storage to ensure research data is never lost between restarts. |
 | **Embeddings** | Hugging Face (`all-MiniLM`) | Generates semantic embeddings for battery research papers to power the GraphRAG retrieval engine. |
+
+## Installation and Setup
+
+### 1. Backend (FastAPI, Celery, Redis)
+
+Ensure you have Python 3.11+ installed.
+
+1. **Navigate to the backend directory and set up a virtual environment:**
+   ```bash
+   cd backend
+   python -m venv venv
+   # On Windows:
+   .\venv\Scripts\activate
+   # On Mac/Linux:
+   source venv/bin/activate
+   ```
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **Set up Redis:**
+   Ensure Docker is installed, then start the Redis container:
+   ```bash
+   docker-compose up -d
+   ```
+4. **Environment Variables:**
+   Ensure you have a `.env` file in the `backend/` directory with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEO4J_URI`, etc.
+5. **Run the FastAPI server:**
+   ```bash
+   uvicorn main:app --reload
+   ```
+6. **Run the Celery worker** (in a separate terminal, with venv activated):
+   ```bash
+   # On Windows
+   celery -A app.core.celery_app worker --loglevel=info --pool=solo
+   # On Mac/Linux
+   celery -A app.core.celery_app worker --loglevel=info
+   ```
+
+### 2. Frontend (React + Vite)
+
+1. **Navigate to the frontend directory:**
+   ```bash
+   cd frontend
+   ```
+2. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+3. **Environment Variables:**
+   Ensure you have a `.env` file with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+4. **Run the development server:**
+   ```bash
+   npm run dev
+   ```
+
+### 3. Databases
+- **ChromaDB:** Runs locally via the persistent client. Data is stored in `backend/chroma_data/` (this directory is ignored in git so you don't commit SQLite binaries). You don't need to manually push SQLite data to the repository.
+- **Supabase:** Used for Auth and relational data. You must configure Auth and create necessary tables in your Supabase dashboard.
+- **Neo4j:** Uses a remote AuraDB instance configured via the `.env` file.
