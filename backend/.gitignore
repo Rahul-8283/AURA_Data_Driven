@@ -29,3 +29,4 @@ build/
 # Databases / Data
 chroma_data/
 *.sqlite3
+data/raw/papers/
