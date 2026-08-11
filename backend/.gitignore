@@ -25,3 +25,7 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# Databases / Data
+chroma_data/
+*.sqlite3
