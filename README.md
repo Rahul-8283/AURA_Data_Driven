@@ -16,6 +16,7 @@ AURA is an AI-powered, domain-specific research assistant designed to accelerate
   <img src="https://img.shields.io/badge/all--MiniLM--L6--v2-4B4B4B?style=for-the-badge" alt="all-MiniLM-L6-v2" />
   <img src="https://img.shields.io/badge/Celery-37814A?style=for-the-badge&logo=celery&logoColor=white" alt="Celery" />
   <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis" />
+  <img src="https://img.shields.io/badge/Upstash_Redis-00E9A3?style=for-the-badge&logo=upstash&logoColor=white" alt="Upstash" />
   <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
 </p>
@@ -114,7 +115,7 @@ After running multiple GA generations, materials are ranked by a fitness score (
 | **Backend API** | FastAPI | High-performance Python framework serving the core API and handling asynchronous multi-agent tasks. |
 | **Auth & Storage** | Supabase | Provides robust user authentication, file storage (buckets), and PostgreSQL for relational user data. |
 | **Task Queue** | Celery | Manages and distributes long-running Genetic Algorithm and LLM prediction tasks asynchronously. |
-| **Message Broker** | Redis | In-memory data store acting as the message broker for Celery and caching intermediate GraphRAG results. |
+| **Message Broker** | Upstash Redis | Serverless, cloud-based Redis acting as the fast message broker for Celery and caching intermediate GraphRAG results. |
 | **Orchestration** | LangGraph | Manages the multi-agent workflows, state transitions, and the Genetic Algorithm (GA) execution loops. |
 | **LLM Engine** | OpenRouter | Routes requests to top-tier LLMs (e.g., Claude, GPT) for deep chemical reasoning and property prediction. |
 | **Knowledge Graph** | Neo4j | Graph database storing battery elements, materials, properties, and their complex electrochemical relationships. |
@@ -140,11 +141,8 @@ Ensure you have Python 3.11+ installed.
    ```bash
    pip install -r requirements.txt
    ```
-3. **Set up Redis:**
-   Ensure Docker is installed, then start the Redis container:
-   ```bash
-   docker-compose up -d
-   ```
+3. **Set up Redis (Upstash):**
+   Create a free serverless Redis database on [Upstash](https://upstash.com/) and copy the `rediss://` URL into your `.env` file as `REDIS_URL`. No Docker required!
 4. **Environment Variables:**
    Ensure you have a `.env` file in the `backend/` directory with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEO4J_URI`, etc.
 5. **Run the FastAPI server:**
