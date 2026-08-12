@@ -29,3 +29,7 @@ requests==2.32.3
 PyMuPDF
 langchain-text-splitters
 tenacity
+
+# Testing
+pytest==8.2.2
+pytest-asyncio==0.23.7

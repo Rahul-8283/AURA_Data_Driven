@@ -39,6 +39,12 @@ class GraphRAGService:
             graph_results = "Error retrieving graph data."
             vector_results = "Error retrieving literature data."
             
+        # Safely truncate vector results if it exceeds word limit to protect LLM context windows
+        words = vector_results.split()
+        if len(words) > 3000:
+            logger.warning(f"Vector context exceeded 3000 words ({len(words)} words). Truncating.")
+            vector_results = " ".join(words[:3000]) + "\n\n[...Truncated for length...]"
+            
         # Format and combine into a strict template for the LLM
         combined_context = f"""
 === STRUCTURAL GRAPH RULES (Absolute Truths) ===
