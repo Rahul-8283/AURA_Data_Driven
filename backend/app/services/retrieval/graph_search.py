@@ -43,8 +43,27 @@ Query: {query}
         resp.raise_for_status()
         data = resp.json()
         raw_text = data["choices"][0]["message"]["content"]
-        
-        # Clean up in case Claude wraps in markdown
+    except Exception as e:
+        logger.warning(f"OpenRouter API extraction failed: {e}. Falling back to Gemini.")
+        if not settings.gemini_api_key:
+            logger.error("Gemini API key not set for fallback.")
+            return []
+            
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={settings.gemini_api_key}"
+        gemini_payload = {
+            "contents": [{"parts": [{"text": prompt}]}]
+        }
+        try:
+            g_resp = await asyncio.to_thread(requests.post, gemini_url, json=gemini_payload)
+            g_resp.raise_for_status()
+            g_data = g_resp.json()
+            raw_text = g_data["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as gemini_e:
+            logger.error(f"Gemini API fallback also failed: {gemini_e}")
+            return []
+            
+    try:
+        # Clean up in case LLM wraps in markdown
         if raw_text.startswith("```json"):
             raw_text = raw_text.split("```json")[1]
         elif raw_text.startswith("```"):
@@ -58,7 +77,7 @@ Query: {query}
             return [str(e) for e in entities]
         return []
     except Exception as e:
-        logger.error(f"Failed to extract entities from query: {e}")
+        logger.error(f"Failed to parse or validate LLM output: {e}")
         return []
 
 
