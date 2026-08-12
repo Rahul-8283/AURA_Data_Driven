@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # LLM/Embeddings
     HF_API_key: str
     gemini_api_key: str
+    OPENROUTER_API_KEY: str | None = None
     
     # Neo4j
     NEO4J_URI: str
@@ -23,7 +24,7 @@ class Settings(BaseSettings):
     NEO4J_PASSWORD: str
 
     # Redis/Celery
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str
     
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

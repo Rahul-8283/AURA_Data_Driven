@@ -1,0 +1,19 @@
+[
+  {"subject_label": "Material", "subject": "NMC811", "predicate": "CONTAINS", "object_label": "Element", "object": "Ni"},
+  {"subject_label": "Material", "subject": "NMC811", "predicate": "CONTAINS", "object_label": "Element", "object": "Mn"},
+  {"subject_label": "Material", "subject": "NMC811", "predicate": "CONTAINS", "object_label": "Element", "object": "Co"},
+  {"subject_label": "Material", "subject": "NMC811", "predicate": "CONTAINS", "object_label": "Element", "object": "Li"},
+  {"subject_label": "Material", "subject": "NMC811", "predicate": "CONTAINS", "object_label": "Element", "object": "O"},
+  {"subject_label": "Material", "subject": "LCO", "predicate": "CONTAINS", "object_label": "Element", "object": "Li"},
+  {"subject_label": "Material", "subject": "LCO", "predicate": "CONTAINS", "object_label": "Element", "object": "Co"},
+  {"subject_label": "Material", "subject": "LCO", "predicate": "CONTAINS", "object_label": "Element", "object": "O"},
+  {"subject_label": "Material", "subject": "LFP", "predicate": "CONTAINS", "object_label": "Element", "object": "Li"},
+  {"subject_label": "Material", "subject": "LFP", "predicate": "CONTAINS", "object_label": "Element", "object": "Fe"},
+  {"subject_label": "Material", "subject": "LFP", "predicate": "CONTAINS", "object_label": "Element", "object": "P"},
+  {"subject_label": "Material", "subject": "LFP", "predicate": "CONTAINS", "object_label": "Element", "object": "O"},
+  {"subject_label": "Material", "subject": "NMC811", "predicate": "SUFFERS_FROM", "object_label": "DegradationMode", "object": "Cation Mixing"},
+  {"subject_label": "Material", "subject": "NMC811", "predicate": "SUFFERS_FROM", "object_label": "DegradationMode", "object": "Microcracking"},
+  {"subject_label": "Element", "subject": "Mg", "predicate": "MITIGATES", "object_label": "DegradationMode", "object": "Cation Mixing"},
+  {"subject_label": "Element", "subject": "Al", "predicate": "MITIGATES", "object_label": "DegradationMode", "object": "Microcracking"},
+  {"subject_label": "Element", "subject": "Zr", "predicate": "MITIGATES", "object_label": "DegradationMode", "object": "Phase Transition"}
+]

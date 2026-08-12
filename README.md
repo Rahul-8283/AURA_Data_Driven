@@ -15,7 +15,7 @@ AURA is an AI-powered, domain-specific research assistant designed to accelerate
   <img src="https://img.shields.io/badge/Hugging_Face-FFD21E?style=for-the-badge&logo=huggingface&logoColor=000" alt="Hugging Face" />
   <img src="https://img.shields.io/badge/all--MiniLM--L6--v2-4B4B4B?style=for-the-badge" alt="all-MiniLM-L6-v2" />
   <img src="https://img.shields.io/badge/Celery-37814A?style=for-the-badge&logo=celery&logoColor=white" alt="Celery" />
-  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis" />
+  <img src="https://img.shields.io/badge/Upstash_Redis-DC382D?style=for-the-badge&logo=upstash&logoColor=white" alt="Upstash" />
   <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
 </p>
@@ -114,7 +114,7 @@ After running multiple GA generations, materials are ranked by a fitness score (
 | **Backend API** | FastAPI | High-performance Python framework serving the core API and handling asynchronous multi-agent tasks. |
 | **Auth & Storage** | Supabase | Provides robust user authentication, file storage (buckets), and PostgreSQL for relational user data. |
 | **Task Queue** | Celery | Manages and distributes long-running Genetic Algorithm and LLM prediction tasks asynchronously. |
-| **Message Broker** | Redis | In-memory data store acting as the message broker for Celery and caching intermediate GraphRAG results. |
+| **Message Broker** | Upstash Redis | Serverless, cloud-based Redis acting as the fast message broker for Celery and caching intermediate GraphRAG results. |
 | **Orchestration** | LangGraph | Manages the multi-agent workflows, state transitions, and the Genetic Algorithm (GA) execution loops. |
 | **LLM Engine** | OpenRouter | Routes requests to top-tier LLMs (e.g., Claude, GPT) for deep chemical reasoning and property prediction. |
 | **Knowledge Graph** | Neo4j | Graph database storing battery elements, materials, properties, and their complex electrochemical relationships. |
@@ -140,13 +140,40 @@ Ensure you have Python 3.11+ installed.
    ```bash
    pip install -r requirements.txt
    ```
-3. **Set up Redis:**
-   Ensure Docker is installed, then start the Redis container:
-   ```bash
-   docker-compose up -d
-   ```
+3. **Set up Redis (Upstash):**
+   Create a free serverless Redis database on [Upstash](https://upstash.com/) and copy the `rediss://` URL into your `.env` file as `REDIS_URL`. No Docker required!
 4. **Environment Variables:**
-   Ensure you have a `.env` file in the `backend/` directory with `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEO4J_URI`, etc.
+   Ensure you have a `.env` file in the `backend/` directory. You can copy the contents of `.env.example`:
+   ```dotenv
+   # --- Backend Environment Variables ---
+   
+   # Server Config
+   PORT=8000
+   
+   # Core Database & Storage (Supabase)
+   SUPABASE_URL=https://your-project-id.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-never-share
+   DATABASE_URL=postgresql://postgres:[YOUR-PASSWORD]@db.your-project-id.supabase.co:5432/postgres
+   SUPABASE_JWT_SECRET=your_jwt_secret
+   
+   # Graph Database (Neo4j)
+   NEO4J_URI=bolt://localhost:7687
+   NEO4J_USERNAME=neo4j
+   NEO4J_PASSWORD=your_neo4j_password
+   
+   # Vector Database (chromadb)
+   CHROMA_DATABASE=database
+   
+   # AI Engine API (OpenRouter or Gemini)
+   OPENROUTER_API_KEY=sk-or-v1-...
+   GEMINI_API_KEY=your_gemini_api_key
+   
+   # Embedding Model (Hugging Face API)
+   HF_API_KEY=your_hf_api_key_here
+   
+   # Celery Background Tasks (Upstash Redis)
+   REDIS_URL=rediss://default:your_upstash_password@your-upstash-url.upstash.io:6379
+   ```
 5. **Run the FastAPI server:**
    ```bash
    uvicorn main:app --reload
@@ -170,7 +197,21 @@ Ensure you have Python 3.11+ installed.
    npm install
    ```
 3. **Environment Variables:**
-   Ensure you have a `.env` file with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+   Ensure you have a `.env` file in the `frontend/` directory. You can copy the contents of `.env.example`:
+   ```dotenv
+   # --- Frontend Environment Variables ---
+   
+   # API Gateway URLs
+   VITE_API_DEV_URL=http://127.0.0.1:8000
+   VITE_API_PRO_URL=https://project_name.onrender.com
+   
+   # Execution Mode (development | production)
+   VITE_MODE=development
+   
+   # Supabase Auth & Database (Public Keys)
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-public-anon-key
+   ```
 4. **Run the development server:**
    ```bash
    npm run dev
