@@ -9,14 +9,23 @@ logger = logging.getLogger(__name__)
 
 def extract_triplets_from_text(text: str) -> List[Triplet]:
     """
-    Extracts structured relationships from a chunk of text using Gemini API.
+    Extracts structured relationships from a chunk of text using OpenRouter (Claude 3 Haiku).
     Validates output using Pydantic Triplet model.
     """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={settings.gemini_api_key}"
+    if not settings.OPENROUTER_API_KEY:
+        logger.error("OPENROUTER_API_KEY is not set in environment.")
+        return []
+
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
     
     prompt = f"""
 You are an expert battery chemistry assistant. Extract specific entities and relationships from the text below.
-Strictly adhere to this JSON format and use ONLY these predicates: CONTAINS, CAN_BE_DOPED_WITH, EXHIBITS, SUFFERS_FROM, MITIGATES.
+Strictly return ONLY a valid JSON array of objects and nothing else. No markdown blocks, no conversational text.
+Use ONLY these predicates: CONTAINS, CAN_BE_DOPED_WITH, EXHIBITS, SUFFERS_FROM, MITIGATES.
 Subject and object labels must be one of: Element, Material, Property, DegradationMode.
 
 Example Output:
@@ -27,19 +36,23 @@ Example Output:
 Text: {text}
 """
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "response_mime_type": "application/json"
-        }
+        "model": "anthropic/claude-3-haiku",
+        "messages": [{"role": "user", "content": prompt}],
     }
     
     try:
-        resp = requests.post(url, json=payload)
+        resp = requests.post(url, headers=headers, json=payload)
         resp.raise_for_status()
         data = resp.json()
-        raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
+        raw_text = data["choices"][0]["message"]["content"]
         
-        parsed_json = json.loads(raw_text)
+        # Clean up in case Claude wraps in markdown
+        if raw_text.startswith("```json"):
+            raw_text = raw_text.split("```json")[1]
+        if raw_text.endswith("```"):
+            raw_text = raw_text.rsplit("```", 1)[0]
+            
+        parsed_json = json.loads(raw_text.strip())
         triplets = []
         for item in parsed_json:
             try:
@@ -49,5 +62,5 @@ Text: {text}
                 logger.warning(f"Failed to validate triplet {item}: {e}")
         return triplets
     except Exception as e:
-        logger.error(f"Gemini API extraction failed: {e}")
+        logger.error(f"OpenRouter API extraction failed: {e}")
         return []

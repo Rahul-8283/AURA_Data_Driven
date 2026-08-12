@@ -10,7 +10,7 @@ def run_test():
         "mode that NMC811 typically suffers from. Furthermore, the material exhibits high capacity."
     )
     
-    print("\n--- Testing Gemini Triplet Extraction ---")
+    print("\n--- Testing OpenRouter Triplet Extraction ---")
     print(f"Input Text:\n{sample_text}\n")
     print("Extracting (this may take a few seconds)...\n")
     
