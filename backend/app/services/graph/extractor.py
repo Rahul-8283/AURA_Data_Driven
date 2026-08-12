@@ -51,7 +51,7 @@ Text: {text}
             logger.error("Gemini API key not set for fallback.")
             return []
             
-        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={settings.gemini_api_key}"
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={settings.gemini_api_key}"
         gemini_payload = {
             "contents": [{"parts": [{"text": prompt}]}]
         }
