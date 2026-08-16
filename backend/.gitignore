@@ -30,3 +30,9 @@ build/
 chroma_data/
 *.sqlite3
 data/raw/papers/
+
+#PDF
+*.pdf
+
+#Docs
+*.docx
