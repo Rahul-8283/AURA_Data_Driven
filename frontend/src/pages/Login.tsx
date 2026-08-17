@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, GitBranch, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import AuraMark from '../components/shared/AuraMark';
@@ -39,26 +39,6 @@ const Login = () => {
     }
   };
 
-  const handleGitHubLogin = async () => {
-    if (!supabase) {
-      setErrorMessage('Authentication is not configured yet. Add your Supabase public URL and anonymous key to continue.');
-      return;
-    }
-
-    try {
-      setErrorMessage('');
-      setLoading(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: { redirectTo: `${window.location.origin}/dashboard` },
-      });
-
-      if (error) throw error;
-    } catch (error: unknown) {
-      setErrorMessage(error instanceof Error ? error.message : 'We could not start the sign-in flow. Please try again.');
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="auth-page">
@@ -130,19 +110,6 @@ const Login = () => {
               {!loading && <ArrowRight size={17} />}
             </button>
           </form>
-
-          <div className="auth-card__divider"><span>OR</span></div>
-
-          <button
-            type="button"
-            onClick={handleGitHubLogin}
-            disabled={loading || !hasSupabaseConfig}
-            className="auth-provider-button"
-          >
-            {loading ? <Loader2 size={19} /> : <GitBranch size={19} />}
-            <span>{loading ? 'Opening secure sign in…' : 'Continue with GitHub'}</span>
-          </button>
-
           {errorMessage && <p className="auth-error" role="alert">{errorMessage}</p>}
 
           <Link to="/signup" className="auth-footer-link">

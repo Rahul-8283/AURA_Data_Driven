@@ -59,7 +59,7 @@ const Hero = () => {
             <div className="eyebrow"> Autonomous materials discovery</div>
             <h1>Make the next <em>breakthrough</em> feel inevitable.</h1>
             <p className="hero-copy__lede">
-              AURA turns battery-material research into a living field of possibilities—grounded in literature,
+              AURA turns battery-material research into a living field of possibilities grounded in literature,
               shaped by chemistry, and focused on what is worth making next.
             </p>
 

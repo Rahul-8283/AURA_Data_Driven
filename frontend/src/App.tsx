@@ -3,6 +3,7 @@ import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
+import Settings from './pages/Settings';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/shared/ProtectedRoute';
 
@@ -16,6 +17,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
         {/* Fallback route */}
         <Route path="*" element={<Navigate to="/" replace />} />
