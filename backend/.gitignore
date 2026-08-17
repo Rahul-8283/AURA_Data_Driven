@@ -33,6 +33,3 @@ data/raw/papers/
 
 #PDF
 *.pdf
-
-#Docs
-*.docx

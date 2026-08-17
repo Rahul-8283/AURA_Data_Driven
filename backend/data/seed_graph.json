@@ -1,19 +1,1227 @@
 [
-  {"subject_label": "Material", "subject": "NMC811", "predicate": "CONTAINS", "object_label": "Element", "object": "Ni"},
-  {"subject_label": "Material", "subject": "NMC811", "predicate": "CONTAINS", "object_label": "Element", "object": "Mn"},
-  {"subject_label": "Material", "subject": "NMC811", "predicate": "CONTAINS", "object_label": "Element", "object": "Co"},
-  {"subject_label": "Material", "subject": "NMC811", "predicate": "CONTAINS", "object_label": "Element", "object": "Li"},
-  {"subject_label": "Material", "subject": "NMC811", "predicate": "CONTAINS", "object_label": "Element", "object": "O"},
-  {"subject_label": "Material", "subject": "LCO", "predicate": "CONTAINS", "object_label": "Element", "object": "Li"},
-  {"subject_label": "Material", "subject": "LCO", "predicate": "CONTAINS", "object_label": "Element", "object": "Co"},
-  {"subject_label": "Material", "subject": "LCO", "predicate": "CONTAINS", "object_label": "Element", "object": "O"},
-  {"subject_label": "Material", "subject": "LFP", "predicate": "CONTAINS", "object_label": "Element", "object": "Li"},
-  {"subject_label": "Material", "subject": "LFP", "predicate": "CONTAINS", "object_label": "Element", "object": "Fe"},
-  {"subject_label": "Material", "subject": "LFP", "predicate": "CONTAINS", "object_label": "Element", "object": "P"},
-  {"subject_label": "Material", "subject": "LFP", "predicate": "CONTAINS", "object_label": "Element", "object": "O"},
-  {"subject_label": "Material", "subject": "NMC811", "predicate": "SUFFERS_FROM", "object_label": "DegradationMode", "object": "Cation Mixing"},
-  {"subject_label": "Material", "subject": "NMC811", "predicate": "SUFFERS_FROM", "object_label": "DegradationMode", "object": "Microcracking"},
-  {"subject_label": "Element", "subject": "Mg", "predicate": "MITIGATES", "object_label": "DegradationMode", "object": "Cation Mixing"},
-  {"subject_label": "Element", "subject": "Al", "predicate": "MITIGATES", "object_label": "DegradationMode", "object": "Microcracking"},
-  {"subject_label": "Element", "subject": "Zr", "predicate": "MITIGATES", "object_label": "DegradationMode", "object": "Phase Transition"}
+  {
+    "subject_label": "Material",
+    "subject": "NMC111",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Ni"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC111",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Mn"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC111",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Co"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC111",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC111",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC532",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Ni"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC532",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Mn"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC532",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Co"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC532",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC532",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC622",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Ni"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC622",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Mn"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC622",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Co"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC622",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC622",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Ni"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Mn"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Co"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Ni"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Mn"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Co"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Ni"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Co"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Al"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LCO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LCO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Co"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LCO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LFP",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LFP",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Fe"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LFP",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "P"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LFP",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMFP",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMFP",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Mn"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMFP",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Fe"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMFP",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "P"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMFP",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Mn"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMNO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMNO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Mn"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMNO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Ni"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMNO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LiFSI_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LiFSI_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "F"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LiFSI_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "S"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LiFSI_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "N"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LiPF6_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LiPF6_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "P"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LiPF6_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "F"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Graphite",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "C"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Silicon_Anode",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Si"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LTO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LTO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Ti"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LTO",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Hard_Carbon",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "C"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LGPS_Solid_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LGPS_Solid_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Ge"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LGPS_Solid_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "P"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LGPS_Solid_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "S"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LLZO_Solid_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Li"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LLZO_Solid_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "La"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LLZO_Solid_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "Zr"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LLZO_Solid_Electrolyte",
+    "predicate": "CONTAINS",
+    "object_label": "Element",
+    "object": "O"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LCO",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LFP",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMFP",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMO",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMNO",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC111",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC532",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC622",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Cathode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Graphite",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Anode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Silicon_Anode",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Anode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LTO",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Anode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Hard_Carbon",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Anode"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LiFSI_Electrolyte",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Electrolyte"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LiPF6_Electrolyte",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "Electrolyte"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LGPS_Solid_Electrolyte",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "SolidElectrolyte"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LLZO_Solid_Electrolyte",
+    "predicate": "HAS_ROLE",
+    "object_label": "Role",
+    "object": "SolidElectrolyte"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Cation Mixing"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Microcracking"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Oxygen Release"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Cation Mixing"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Microcracking"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Oxygen Release"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Cation Mixing"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Microcracking"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Surface Reconstruction"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LCO",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Phase Transition"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LCO",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Cobalt Dissolution"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMO",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Manganese Dissolution"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMO",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Jahn-Teller Distortion"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LFP",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Fe Dissolution"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LFP",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Low Electronic Conductivity"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Silicon_Anode",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Volume Expansion"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Silicon_Anode",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "SEI Instability"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Graphite",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Lithium Plating"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Graphite",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "SEI Growth"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LGPS_Solid_Electrolyte",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Dendrite Formation"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LGPS_Solid_Electrolyte",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Interfacial Instability"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LLZO_Solid_Electrolyte",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Dendrite Formation"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LLZO_Solid_Electrolyte",
+    "predicate": "SUFFERS_FROM",
+    "object_label": "DegradationMode",
+    "object": "Poor Interfacial Contact"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Mg",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Cation Mixing"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Al",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Microcracking"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Al",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Oxygen Release"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Zr",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Phase Transition"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Zr",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Surface Reconstruction"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Ti",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Cation Mixing"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "W",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Microcracking"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "W",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Cation Mixing"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "B",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Microcracking"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Nb",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Surface Reconstruction"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Nb",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Low Electronic Conductivity"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "F",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "SEI Instability"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "C",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Low Electronic Conductivity"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "La",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Dendrite Formation"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Ta",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Poor Interfacial Contact"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Cr",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "Jahn-Teller Distortion"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "N",
+    "predicate": "MITIGATES",
+    "object_label": "DegradationMode",
+    "object": "SEI Growth"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Al"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Mg"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Zr"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "W"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Ti"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "B"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Al"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC9055",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Zr"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Mg"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NCA",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Zr"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LCO",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Al"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LCO",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Mg"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LCO",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Zr"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LFP",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Nb"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LFP",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "C"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LFP",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Mg"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMO",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Cr"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMO",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Al"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "Silicon_Anode",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "C"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Graphite",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "N"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LLZO_Solid_Electrolyte",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Ta"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LLZO_Solid_Electrolyte",
+    "predicate": "CAN_BE_DOPED_WITH",
+    "object_label": "Element",
+    "object": "Nb"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "PREVENTED_BY",
+    "object_label": "Element",
+    "object": "Al"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "NMC811",
+    "predicate": "PREVENTED_BY",
+    "object_label": "Element",
+    "object": "Zr"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LCO",
+    "predicate": "PREVENTED_BY",
+    "object_label": "Element",
+    "object": "Zr"
+  },
+  {
+    "subject_label": "Material",
+    "subject": "LMO",
+    "predicate": "PREVENTED_BY",
+    "object_label": "Element",
+    "object": "Cr"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Ni",
+    "predicate": "INCREASES",
+    "object_label": "Property",
+    "object": "Specific Capacity"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Ni",
+    "predicate": "DECREASES",
+    "object_label": "Property",
+    "object": "Thermal Stability"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Co",
+    "predicate": "INCREASES",
+    "object_label": "Property",
+    "object": "Rate Capability"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Co",
+    "predicate": "INCREASES",
+    "object_label": "Property",
+    "object": "Cost"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Mn",
+    "predicate": "INCREASES",
+    "object_label": "Property",
+    "object": "Thermal Stability"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Mn",
+    "predicate": "DECREASES",
+    "object_label": "Property",
+    "object": "Cost"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Al",
+    "predicate": "INCREASES",
+    "object_label": "Property",
+    "object": "Thermal Stability"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Al",
+    "predicate": "DECREASES",
+    "object_label": "Property",
+    "object": "Specific Capacity"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Fe",
+    "predicate": "DECREASES",
+    "object_label": "Property",
+    "object": "Cost"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Fe",
+    "predicate": "INCREASES",
+    "object_label": "Property",
+    "object": "Thermal Stability"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Fe",
+    "predicate": "DECREASES",
+    "object_label": "Property",
+    "object": "Voltage"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Si",
+    "predicate": "INCREASES",
+    "object_label": "Property",
+    "object": "Specific Capacity"
+  },
+  {
+    "subject_label": "Element",
+    "subject": "Si",
+    "predicate": "DECREASES",
+    "object_label": "Property",
+    "object": "Cycle Life"
+  },
+  {
+    "subject_label": "DegradationMode",
+    "subject": "Cation Mixing",
+    "predicate": "REDUCES",
+    "object_label": "Property",
+    "object": "Cycle Life"
+  },
+  {
+    "subject_label": "DegradationMode",
+    "subject": "Microcracking",
+    "predicate": "REDUCES",
+    "object_label": "Property",
+    "object": "Cycle Life"
+  },
+  {
+    "subject_label": "DegradationMode",
+    "subject": "Oxygen Release",
+    "predicate": "REDUCES",
+    "object_label": "Property",
+    "object": "Thermal Stability"
+  },
+  {
+    "subject_label": "DegradationMode",
+    "subject": "Dendrite Formation",
+    "predicate": "REDUCES",
+    "object_label": "Property",
+    "object": "Safety"
+  },
+  {
+    "subject_label": "DegradationMode",
+    "subject": "Volume Expansion",
+    "predicate": "REDUCES",
+    "object_label": "Property",
+    "object": "Cycle Life"
+  },
+  {
+    "subject_label": "DegradationMode",
+    "subject": "Jahn-Teller Distortion",
+    "predicate": "REDUCES",
+    "object_label": "Property",
+    "object": "Cycle Life"
+  },
+  {
+    "subject_label": "DegradationMode",
+    "subject": "Low Electronic Conductivity",
+    "predicate": "REDUCES",
+    "object_label": "Property",
+    "object": "Rate Capability"
+  }
 ]
