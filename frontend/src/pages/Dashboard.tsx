@@ -5,7 +5,6 @@ import {
   ChevronDown,
   Database,
   FileText,
-  FlaskConical,
   LogOut,
   MessageSquare,
   Plus,
@@ -95,13 +94,12 @@ const Dashboard = () => {
 
         <nav className="workspace-nav" aria-label="Research workspace navigation">
           <a className="workspace-nav__item workspace-nav__item--active" href="#discovery"><MessageSquare size={17} /> Discovery space</a>
-          <a className="workspace-nav__item" href="#candidates"><FlaskConical size={17} /> Candidate field</a>
           <a className="workspace-nav__item" href="#evidence"><Database size={17} /> Evidence graph</a>
           <a className="workspace-nav__item" href="#reports"><FileText size={17} /> Research reports</a>
         </nav>
 
         <div className="workspace-sidebar__bottom">
-          <button type="button" className="workspace-nav__item"><Settings size={17} /> Settings</button>
+          <button type="button" onClick={() => navigate('/settings')} className="workspace-nav__item"><Settings size={17} /> Settings</button>
           <button type="button" onClick={handleSignOut} className="workspace-nav__item workspace-nav__item--logout"><LogOut size={17} /> {previewMode ? 'Leave preview' : 'Sign out'}</button>
         </div>
       </aside>
@@ -110,7 +108,6 @@ const Dashboard = () => {
         <header className="workspace-header">
           <div className="workspace-breadcrumb"><span>Research space</span><ChevronDown size={14} /><strong>High-energy cathodes</strong></div>
           <div className="workspace-header__actions">
-            {previewMode && <span className="preview-pill">Local preview</span>}
             <button type="button" className="workspace-header__icon" aria-label="Search"><Search size={18} /></button>
             <button type="button" className="workspace-header__icon workspace-header__icon--notification" aria-label="Notifications"><Bell size={18} /><i /></button>
             <div className="workspace-user"><span>{user?.name.slice(0, 1).toUpperCase()}</span><div><strong>{user?.name}</strong><small>{user?.email}</small></div></div>
