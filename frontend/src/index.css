@@ -722,6 +722,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, input:focus-visib
 }
 
 .evidence-accordion__header {
+  width: 100%;
   padding: 10px 14px;
   display: flex;
   justify-content: space-between;
@@ -733,6 +734,7 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, input:focus-visib
   letter-spacing: 0.04em;
   background: rgba(255, 255, 255, 0.02);
   cursor: pointer;
+  border: 0;
 }
 
 .evidence-accordion__header:hover {

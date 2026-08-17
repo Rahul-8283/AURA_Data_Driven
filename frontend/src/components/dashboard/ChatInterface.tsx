@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, AlertCircle, ChevronDown, ChevronUp, Network, BookOpen } from 'lucide-react';
 import api from '../../lib/api';
 
 type Message = {
@@ -166,7 +166,7 @@ function AssistantBubbleContent({ content }: { content: string }) {
               className="evidence-accordion__header"
               onClick={() => setShowGraph(!showGraph)}
             >
-              <span>📊 Structural Graph Rules</span>
+              <span className="flex items-center gap-2"><Network size={14} /> Structural Graph Rules</span>
               {showGraph ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
             {showGraph && (
@@ -184,7 +184,7 @@ function AssistantBubbleContent({ content }: { content: string }) {
               className="evidence-accordion__header"
               onClick={() => setShowLiterature(!showLiterature)}
             >
-              <span>📚 Literature Evidence</span>
+              <span className="flex items-center gap-2"><BookOpen size={14} /> Literature Evidence</span>
               {showLiterature ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
             {showLiterature && (
