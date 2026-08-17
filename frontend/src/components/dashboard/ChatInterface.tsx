@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, AlertCircle} from 'lucide-react';
+import { Send, AlertCircle, Trash2 } from 'lucide-react';
 import api from '../../lib/api';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Message = {
   id: string;
@@ -9,6 +11,7 @@ type Message = {
 };
 
 export default function ChatInterface() {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -20,6 +23,35 @@ export default function ChatInterface() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch history on load
+  useEffect(() => {
+    if (!user) return;
+    const fetchHistory = async () => {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+        
+      if (!error && data && data.length > 0) {
+        const formattedHistory: Message[] = data.map((msg) => ({
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content
+        }));
+        setMessages([
+          {
+            id: 'welcome',
+            role: 'assistant',
+            content: 'Welcome to the AURA discovery space. How can I assist you with your battery-material research today?',
+          },
+          ...formattedHistory
+        ]);
+      }
+    };
+    fetchHistory();
+  }, [user]);
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -42,6 +74,15 @@ export default function ChatInterface() {
     setError('');
 
     try {
+      // Save user message to Supabase
+      if (user) {
+        await supabase.from('chat_messages').insert([{
+          user_id: user.id,
+          role: 'user',
+          content: userMessage.content
+        }]);
+      }
+
       // Direct call to live backend RAG query endpoint
       const response = await api.post('/api/v1/rag/query', {
         prompt: userMessage.content,
@@ -54,6 +95,15 @@ export default function ChatInterface() {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // Save assistant message to Supabase
+      if (user) {
+        await supabase.from('chat_messages').insert([{
+          user_id: user.id,
+          role: 'assistant',
+          content: assistantMessage.content
+        }]);
+      }
     } catch (err: any) {
       console.error(err);
       setError(err?.response?.data?.detail || err.message || 'An error occurred while connecting to the backend.');
@@ -62,8 +112,33 @@ export default function ChatInterface() {
     }
   };
 
+  const handleClearChat = async () => {
+    if (!user || !window.confirm("Are you sure you want to clear your chat history?")) return;
+    
+    // Delete from Supabase
+    await supabase.from('chat_messages').delete().eq('user_id', user.id);
+    
+    // Reset local state
+    setMessages([
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: 'Welcome to the AURA discovery space. How can I assist you with your battery-material research today?',
+      },
+    ]);
+  };
+
   return (
-    <div className="chat-container">
+    <div className="chat-container relative">
+      {messages.length > 1 && (
+        <button 
+          onClick={handleClearChat}
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors z-10"
+          title="Clear Chat History"
+        >
+          <Trash2 size={18} />
+        </button>
+      )}
       <div className="chat-messages">
         {messages.map((msg) => (
           <div
