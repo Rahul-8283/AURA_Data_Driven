@@ -1,2 +1,5 @@
 #DOCX Files
 *.docx
+
+#literature
+*.pdf
