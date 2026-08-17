@@ -1,20 +1,76 @@
 import asyncio
 import logging
+import requests
+from app.core.config import settings
 from app.services.retrieval.graph_search import get_graph_context
 from app.services.retrieval.vector_search import get_vector_context
 from app.db.chroma_client import init_literature_collection
 
 logger = logging.getLogger(__name__)
 
+RAG_FORMATTING_PROMPT = """
+You are a materials science AI assistant specialized in battery research.
+Your goal is to answer the user's question: "{query}" using the provided context.
+
+Context:
+{combined_context}
+
+Guidelines:
+1. Synthesize the findings from the structural graph rules and literature database into a single, cohesive, professional response.
+2. Do NOT use headers like "=== STRUCTURAL GRAPH RULES ===" or "=== LITERATURE EVIDENCE ===". 
+3. Reformat raw relations and text snippets into natural, fluent scientific explanations.
+4. Keep the output extremely clean, readable, and professional. Start answering directly.
+"""
+
+def reformat_with_llm(query: str, combined_context: str) -> str:
+    prompt = RAG_FORMATTING_PROMPT.format(query=query, combined_context=combined_context)
+    
+    # Try OpenRouter
+    if settings.OPENROUTER_API_KEY:
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [{"role": "user", "content": prompt}],
+                },
+                timeout=15
+            )
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            logger.error(f"OpenRouter formatting failed: {e}")
+            
+    # Try Gemini fallback
+    if settings.gemini_api_key:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={settings.gemini_api_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}]
+            }
+            response = requests.post(url, json=payload, timeout=15)
+            response.raise_for_status()
+            data = response.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        except Exception as e:
+            logger.error(f"Gemini formatting failed: {e}")
+            
+    # Return raw combined context if all LLM formatting fails
+    return combined_context
+
 class GraphRAGService:
     @staticmethod
     async def retrieve_context(query: str) -> str:
         """
         Orchestrates the GraphRAG pipeline by concurrently fetching semantic
-        evidence from ChromaDB and structural rules from Neo4j.
+        evidence from ChromaDB and structural rules from Neo4j, then processes
+        the context using an LLM to generate professional, readable summaries.
         """
         # Ensure ChromaDB collection is loaded. 
-        # Using to_thread because ChromaDB initializations can sometimes block.
         try:
             collection = await asyncio.to_thread(init_literature_collection)
         except Exception as e:
@@ -31,7 +87,7 @@ class GraphRAGService:
                 return "Error retrieving literature data (ChromaDB connection failed)."
             vector_task = fallback_vector()
         
-        # Wait for both to resolve concurrently using asyncio.gather
+        # Wait for both to resolve concurrently
         try:
             graph_results, vector_results = await asyncio.gather(graph_task, vector_task)
         except Exception as e:
@@ -39,13 +95,12 @@ class GraphRAGService:
             graph_results = "Error retrieving graph data."
             vector_results = "Error retrieving literature data."
             
-        # Safely truncate vector results if it exceeds word limit to protect LLM context windows
+        # Safely truncate vector results
         words = vector_results.split()
         if len(words) > 3000:
             logger.warning(f"Vector context exceeded 3000 words ({len(words)} words). Truncating.")
             vector_results = " ".join(words[:3000]) + "\n\n[...Truncated for length...]"
             
-        # Format and combine into a strict template for the LLM
         combined_context = f"""
 === STRUCTURAL GRAPH RULES (Absolute Truths) ===
 {graph_results}
@@ -53,4 +108,6 @@ class GraphRAGService:
 === LITERATURE EVIDENCE (Contextual Findings) ===
 {vector_results}
 """
-        return combined_context.strip()
+        # Call the LLM formatter in a separate thread to prevent blocking
+        formatted_context = await asyncio.to_thread(reformat_with_llm, query, combined_context.strip())
+        return formatted_context

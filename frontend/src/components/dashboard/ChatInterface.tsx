@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, AlertCircle, ChevronDown, ChevronUp, Network, BookOpen } from 'lucide-react';
+import { Send, AlertCircle} from 'lucide-react';
 import api from '../../lib/api';
 
 type Message = {
@@ -129,74 +129,7 @@ export default function ChatInterface() {
   );
 }
 
-// Special subcomponent to render the RAG assistant response with clean accordions
+// Special subcomponent to render the RAG assistant response
 function AssistantBubbleContent({ content }: { content: string }) {
-  const [showGraph, setShowGraph] = useState(false);
-  const [showLiterature, setShowLiterature] = useState(false);
-
-  const graphHeader = '=== STRUCTURAL GRAPH RULES (Absolute Truths) ===';
-  const litHeader = '=== LITERATURE EVIDENCE (Contextual Findings) ===';
-
-  if (content.includes(graphHeader) || content.includes(litHeader)) {
-    let graphContent = '';
-    let litContent = '';
-    let introText = '';
-
-    const parts = content.split(graphHeader);
-    introText = parts[0]?.trim();
-
-    if (parts[1]) {
-      const subParts = parts[1].split(litHeader);
-      graphContent = subParts[0]?.trim();
-      litContent = subParts[1]?.trim();
-    } else {
-      const partsLit = content.split(litHeader);
-      introText = partsLit[0]?.trim();
-      litContent = partsLit[1]?.trim();
-    }
-
-    return (
-      <div className="flex flex-col gap-3">
-        {introText && <p className="text-sm">{introText}</p>}
-
-        {graphContent && (
-          <div className="evidence-accordion">
-            <button
-              type="button"
-              className="evidence-accordion__header"
-              onClick={() => setShowGraph(!showGraph)}
-            >
-              <span className="flex items-center gap-2"><Network size={14} /> Structural Graph Rules</span>
-              {showGraph ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-            {showGraph && (
-              <div className="evidence-accordion__content">
-                {graphContent}
-              </div>
-            )}
-          </div>
-        )}
-
-        {litContent && (
-          <div className="evidence-accordion">
-            <button
-              type="button"
-              className="evidence-accordion__header"
-              onClick={() => setShowLiterature(!showLiterature)}
-            >
-              <span className="flex items-center gap-2"><BookOpen size={14} /> Literature Evidence</span>
-              {showLiterature ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-            {showLiterature && (
-              <div className="evidence-accordion__content">
-                {litContent}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return <div className="whitespace-pre-wrap">{content}</div>;
 }
