@@ -25,25 +25,34 @@ Guidelines:
 def reformat_with_llm(query: str, combined_context: str) -> str:
     prompt = RAG_FORMATTING_PROMPT.format(query=query, combined_context=combined_context)
     
-    # Try OpenRouter
+    # Try OpenRouter Free Models
     if settings.OPENROUTER_API_KEY:
-        try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "gpt-4o-mini",
-                    "messages": [{"role": "user", "content": prompt}],
-                },
-                timeout=15
-            )
-            response.raise_for_status()
-            return response.json()["choices"][0]["message"]["content"].strip()
-        except Exception as e:
-            logger.error(f"OpenRouter formatting failed: {e}")
+        free_models = [
+            "inclusionai/ling-3.0-flash-sante:free",
+            "dots-studio/dots-3-note-preview:free",
+            "liquid/lfm-2.5-2.6b:free",
+        ]
+        for model_name in free_models:
+            try:
+                response = requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": model_name,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": 0.2
+                    },
+                    timeout=15
+                )
+                response.raise_for_status()
+                content = response.json()["choices"][0]["message"]["content"].strip()
+                if content:
+                    return content
+            except Exception as e:
+                logger.warning(f"OpenRouter model {model_name} formatting failed: {e}. Trying next...")
             
     # Try Gemini fallback
     if settings.gemini_api_key:
