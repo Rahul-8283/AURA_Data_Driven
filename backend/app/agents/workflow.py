@@ -3,8 +3,8 @@ from langgraph.graph import StateGraph, END
 from app.agents.state import ResearchState
 
 from app.agents.nodes.planner import planner_node
+from app.agents.nodes.mutator import mutator_node
 from app.agents.nodes.dummy_nodes import (
-    dummy_mutator_node,
     dummy_predictor_node,
     dummy_reporter_node
 )
@@ -16,7 +16,7 @@ workflow = StateGraph(ResearchState)
 
 # Add all the nodes
 workflow.add_node("planner", planner_node)
-workflow.add_node("mutator", dummy_mutator_node)
+workflow.add_node("mutator", mutator_node)
 workflow.add_node("predictor", dummy_predictor_node)
 workflow.add_node("reporter", dummy_reporter_node)
 
