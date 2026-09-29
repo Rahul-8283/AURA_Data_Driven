@@ -38,33 +38,47 @@ def parse_llm_json(response_text: str) -> dict:
     return json.loads(cleaned.strip())
 
 def call_openrouter(prompt: str) -> dict:
-    """Attempt to call OpenRouter."""
-    if not settings.openrouter_api_key:
+    """Attempt to call OpenRouter using free models."""
+    api_key = settings.OPENROUTER_API_KEY or getattr(settings, "openrouter_api_key", None)
+    if not api_key:
         raise ValueError("OpenRouter API key missing")
         
-    response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {settings.openrouter_api_key}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "gpt-4o-mini",
-            "messages": [{"role": "user", "content": prompt}],
-            "response_format": {"type": "json_object"}
-        },
-        timeout=15
-    )
-    response.raise_for_status()
-    content = response.json()["choices"][0]["message"]["content"]
-    return parse_llm_json(content)
+    free_models = [
+        "inclusionai/ling-3.0-flash-sante:free",
+        "dots-studio/dots-3-note-preview:free",
+        "liquid/lfm-2.5-2.6b:free",
+    ]
+    last_err = None
+    for model_name in free_models:
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": model_name,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.1
+                },
+                timeout=15
+            )
+            response.raise_for_status()
+            content = response.json()["choices"][0]["message"]["content"]
+            return parse_llm_json(content)
+        except Exception as e:
+            last_err = e
+            logger.warning(f"Planner OpenRouter model {model_name} failed: {e}. Trying next...")
+            
+    raise ValueError(f"All OpenRouter free models failed: {last_err}")
 
 def call_gemini_fallback(prompt: str) -> dict:
     """Fallback to Gemini 3.5 Flash Lite."""
     if not settings.gemini_api_key:
         raise ValueError("Gemini API key missing")
         
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={settings.gemini_api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={settings.gemini_api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
     }
