@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import random
 import uuid
 from app.agents.state import ResearchState
@@ -15,7 +15,7 @@ def mutator_node(state: ResearchState) -> ResearchState:
     excluded_elements = state.get("excluded_elements", [])
     
     if not current_pop:
-        state["logs"].append(f"[{datetime.utcnow().isoformat()}] Mutator: Population empty. Aborting.")
+        state["logs"].append(f"[{datetime.now(timezone.utc).isoformat()}] Mutator: Population empty. Aborting.")
         return state
 
     next_population = []
@@ -63,7 +63,7 @@ def mutator_node(state: ResearchState) -> ResearchState:
     # 6. Replace current_population in the state with the next_population and append a progress log
     state["current_population"] = next_population
     state["logs"].append(
-        f"[{datetime.utcnow().isoformat()}] Mutator: Generation {state['current_generation']} evolved with size {len(next_population)}."
+        f"[{datetime.now(timezone.utc).isoformat()}] Mutator: Generation {state['current_generation']} evolved with size {len(next_population)}."
     )
     
     return state
