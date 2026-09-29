@@ -32,29 +32,43 @@ Example Output:
 
 Query: {query}
 """
-    payload = {
-        "model": "anthropic/claude-3-haiku",
-        "messages": [{"role": "user", "content": prompt}],
-    }
-    
-    try:
-        # Run synchronous requests in a thread pool so it doesn't block the async loop
-        resp = await asyncio.to_thread(requests.post, url, headers=headers, json=payload)
-        resp.raise_for_status()
-        data = resp.json()
-        raw_text = data["choices"][0]["message"]["content"]
-    except Exception as e:
-        logger.warning(f"OpenRouter API extraction failed: {e}. Falling back to Gemini.")
+    free_models = [
+        "inclusionai/ling-3.0-flash-sante:free",
+        "dots-studio/dots-3-note-preview:free",
+        "liquid/lfm-2.5-2.6b:free",
+    ]
+    raw_text = None
+    last_err = None
+
+    for model_name in free_models:
+        payload = {
+            "model": model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1
+        }
+        try:
+            resp = await asyncio.to_thread(requests.post, url, headers=headers, json=payload, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+            raw_text = data["choices"][0]["message"]["content"]
+            if raw_text:
+                break
+        except Exception as e:
+            last_err = e
+            logger.warning(f"OpenRouter model {model_name} failed: {e}. Trying next...")
+
+    if not raw_text:
+        logger.warning(f"All OpenRouter models failed ({last_err}). Falling back to Gemini.")
         if not settings.gemini_api_key:
             logger.error("Gemini API key not set for fallback.")
             return []
             
-        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={settings.gemini_api_key}"
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={settings.gemini_api_key}"
         gemini_payload = {
             "contents": [{"parts": [{"text": prompt}]}]
         }
         try:
-            g_resp = await asyncio.to_thread(requests.post, gemini_url, json=gemini_payload)
+            g_resp = await asyncio.to_thread(requests.post, gemini_url, json=gemini_payload, timeout=15)
             g_resp.raise_for_status()
             g_data = g_resp.json()
             raw_text = g_data["candidates"][0]["content"]["parts"][0]["text"]
