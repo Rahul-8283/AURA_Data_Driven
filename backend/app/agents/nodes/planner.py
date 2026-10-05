@@ -74,11 +74,11 @@ def call_openrouter(prompt: str) -> dict:
     raise ValueError(f"All OpenRouter free models failed: {last_err}")
 
 def call_gemini_fallback(prompt: str) -> dict:
-    """Fallback to Gemini 3.5 Flash Lite."""
+    """Fallback to Gemini 2.5 Flash."""
     if not settings.gemini_api_key:
         raise ValueError("Gemini API key missing")
         
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={settings.gemini_api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
     }
