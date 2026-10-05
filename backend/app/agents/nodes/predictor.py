@@ -5,6 +5,7 @@ from typing import Dict, Any
 from app.agents.state import ResearchState
 from app.services.retrieval.graph_rag import GraphRAGService
 from app.services.llm.client import predict_properties_async
+from app.services.ga.fitness import calculate_fitness
 
 async def predictor_node(state: ResearchState) -> ResearchState:
     """
@@ -48,8 +49,24 @@ async def predictor_node(state: ResearchState) -> ResearchState:
     # Process all materials in the population concurrently
     processed_pop = await asyncio.gather(*(process_material(mat) for mat in current_pop))
     
+    target_properties = state.get("target_properties", {})
+    for mat in processed_pop:
+        mat["fitness"] = calculate_fitness(mat, target_properties)
+        
+    # Sort population by fitness
+    processed_pop = sorted(list(processed_pop), key=lambda x: x.get("fitness", 0.0), reverse=True)
+    
     # Replace the current population with the annotated materials
-    state["current_population"] = list(processed_pop)
-    state.setdefault("logs", []).append(f"[{datetime.now(timezone.utc).isoformat()}] Predictor: Processed {len(processed_pop)} materials concurrently.")
+    state["current_population"] = processed_pop
+    
+    # Update Hall of Fame (Top 5 all time)
+    best_candidates = state.get("best_candidates", [])
+    best_candidates.extend(processed_pop)
+    best_candidates = sorted(best_candidates, key=lambda x: x.get("fitness", 0.0), reverse=True)[:5]
+    state["best_candidates"] = best_candidates
+    
+    best_score = best_candidates[0].get("fitness", 0.0) if best_candidates else 0.0
+    
+    state.setdefault("logs", []).append(f"[{datetime.now(timezone.utc).isoformat()}] Predictor: Processed {len(processed_pop)} materials concurrently. Best Score: {best_score:.2f}")
     
     return state
