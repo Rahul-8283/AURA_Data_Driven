@@ -35,7 +35,7 @@ else:
 print("\n--- Testing Gemini ---")
 if gemini_key:
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}"
         payload = {
             "contents": [{"parts": [{"text": "Hello"}]}]
         }
