@@ -98,10 +98,10 @@ Return ONLY a valid JSON object matching this schema exactly:
 
     # Fallback to Gemini if all free OpenRouter models failed
     if not content:
-        print(f"All OpenRouter free models failed ({last_error}). Falling back to Gemini 1.5 Flash...")
+        print(f"All OpenRouter free models failed ({last_error}). Falling back to Gemini 2.5 Flash...")
         import requests
         import asyncio
-        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={settings.gemini_api_key}"
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
         payload = {
             "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
             "contents": [{"parts": [{"text": prompt}]}],
