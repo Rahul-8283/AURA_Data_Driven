@@ -1,4 +1,6 @@
 from app.core.celery_app import celery_app
+from app.agents.workflow import app_graph
+import asyncio
 import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -72,3 +74,32 @@ def process_chroma_chunks_task(self):
         "total_triplets_ingested": total_triplets_ingested
     }
 
+
+@celery_app.task(bind=True, name="run_discovery_loop")
+def run_discovery_loop(self, user_prompt: str, task_id: str):
+    initial_state = {
+        "user_prompt": user_prompt, 
+        "task_id": task_id, 
+        "logs": [],
+        "best_candidates": []
+    }
+    
+    last_state = initial_state
+    for event in app_graph.stream(initial_state):
+        for node_name, state_update in event.items():
+            last_state = state_update
+            if node_name == "predictor":
+                gen = state_update.get("current_generation")
+                best_candidates = state_update.get("best_candidates", [])
+                best_score = best_candidates[0].get("fitness", 0) if best_candidates else 0
+                
+                self.update_state(
+                    state='PROGRESS', 
+                    meta={
+                        'message': f"Completed Generation {gen}...",
+                        'generation': gen,
+                        'best_score': round(best_score, 2)
+                    }
+                )
+                
+    return {"status": "success", "results": last_state.get("best_candidates", [])}

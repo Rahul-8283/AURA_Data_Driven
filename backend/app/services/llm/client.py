@@ -119,3 +119,52 @@ Return ONLY a valid JSON object matching this schema exactly:
     except Exception as e:
         raise ValueError(f"Failed to parse LLM response: {content}, Error: {e}")
 
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+async def validate_material_async(material_composition: str, context: str) -> bool:
+    prompt = f"""Material Composition: {material_composition}
+
+Context:
+{context}
+
+Is this material structurally stable and valid according to fundamental valence rules?
+Return ONLY a valid JSON object:
+{{
+  "is_valid": true
+}}
+"""
+    content = None
+    for model_name in FREE_MODELS:
+        try:
+            response = await client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": "You are an expert computational battery chemist. Return strictly JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.0
+            )
+            content = response.choices[0].message.content
+            if content:
+                break
+        except Exception:
+            pass
+
+    if not content:
+        import requests
+        import asyncio
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
+        payload = {
+            "systemInstruction": {"parts": [{"text": "You are an expert computational battery chemist. Return strictly JSON."}]},
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"responseMimeType": "application/json"}
+        }
+        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload)
+        g_resp.raise_for_status()
+        content = g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+    try:
+        cleaned = clean_json_string(content)
+        data = json.loads(cleaned)
+        return bool(data.get("is_valid", True))
+    except Exception:
+        return True # Default to True if we can't parse, so we don't block the loop forever

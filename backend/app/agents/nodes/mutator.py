@@ -5,17 +5,20 @@ from app.agents.state import ResearchState
 from app.services.ga.material import BatteryMaterial
 from app.services.ga.operators import doping, substitution, crossover
 from app.services.ga.population import tournament_selection
+from app.services.llm.client import validate_material_async
+from app.services.retrieval.graph_rag import GraphRAGService
 
-def mutator_node(state: ResearchState) -> ResearchState:
+async def mutator_node(state: ResearchState) -> ResearchState:
     """
     4.2 The Mutator Node Logic
     Executes the genetic algorithm evolution for one generation.
+    Incorporates Phase 7 chemical validation via GraphRAG.
     """
     current_pop = state.get("current_population", [])
     excluded_elements = state.get("excluded_elements", [])
     
     if not current_pop:
-        state["logs"].append(f"[{datetime.now(timezone.utc).isoformat()}] Mutator: Population empty. Aborting.")
+        state.setdefault("logs", []).append(f"[{datetime.now(timezone.utc).isoformat()}] Mutator: Population empty. Aborting.")
         return state
 
     next_population = []
@@ -27,7 +30,8 @@ def mutator_node(state: ResearchState) -> ResearchState:
     
     target_size = max(len(current_pop), 20)
     
-    # 4. Generation Loop
+    # 4. Generation Loop with Validation
+    invalid_count = 0
     while len(next_population) < target_size:
         # Use Tournament Selection to pick a parent
         parent1_dict = tournament_selection(current_pop)
@@ -49,10 +53,25 @@ def mutator_node(state: ResearchState) -> ResearchState:
             parent2_mat = BatteryMaterial(formula=parent2_dict["composition"])
             child_mat = crossover(parent1_mat, parent2_mat)
             
-        # Append child_material to next_population
+        composition_str = child_mat.serialize_to_string()
+        
+        # Phase 7 GraphRAG Validation Filter
+        query = f"Is {composition_str} a structurally stable battery material, or does it violate fundamental valence rules? Check the structural rules provided."
+        try:
+            context = await GraphRAGService.retrieve_context(query)
+            is_valid = await validate_material_async(composition_str, context)
+        except Exception as e:
+            # On error, we assume valid to not block evolution forever
+            is_valid = True
+            
+        if not is_valid:
+            invalid_count += 1
+            continue
+            
+        # Append valid child_material to next_population
         child_dict = {
             "id": f"gen{state.get('current_generation', 0) + 1}_{uuid.uuid4().hex[:8]}",
-            "composition": child_mat.serialize_to_string(),
+            "composition": composition_str,
             "fitness": 0.0 # Will be calculated by the predictor node later
         }
         next_population.append(child_dict)
@@ -62,8 +81,8 @@ def mutator_node(state: ResearchState) -> ResearchState:
     
     # 6. Replace current_population in the state with the next_population and append a progress log
     state["current_population"] = next_population
-    state["logs"].append(
-        f"[{datetime.now(timezone.utc).isoformat()}] Mutator: Generation {state['current_generation']} evolved with size {len(next_population)}."
+    state.setdefault("logs", []).append(
+        f"[{datetime.now(timezone.utc).isoformat()}] Mutator: Generation {state['current_generation']} evolved with size {len(next_population)}. Discarded {invalid_count} invalid candidates."
     )
     
     return state
