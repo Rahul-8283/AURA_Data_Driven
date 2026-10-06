@@ -45,15 +45,10 @@ Frontend (run from `frontend/`):
 After completing each phase or task the user specifies:
 1. Stage and commit all changes using the conventional commit format: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`, `test:`.
 2. Keep commit messages short and precise — only describe what was actually changed, nothing extra.
-3. Always include Claude as co-author at the end of every commit message:
-   ```
-   Co-Authored-By: Claude <noreply@anthropic.com>
-   ```
-4. Push to the branch the user specifies (e.g. `git push origin <branch>`). Create it if it doesn't exist (`git checkout -b <branch>`).
+3. Do NOT add Claude as co-author (no `Co-Authored-By` line) unless the user explicitly asks for it in that request.
+4. Push to the branch the user specifies (e.g. `git push origin <branch>`). Create it if it doesn't exist (`git checkout -b <branch>`). Never open a PR or merge unless asked.
 
 Example commit:
 ```
 feat: add GA mutation operators and population seeding
-
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
