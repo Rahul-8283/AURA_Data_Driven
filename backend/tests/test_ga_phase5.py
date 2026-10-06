@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 from app.services.ga.material import BatteryMaterial
 from app.services.ga.operators import doping, substitution, crossover
 from app.agents.nodes.mutator import mutator_node
@@ -71,7 +71,10 @@ def test_substitution_operator_excluded_elements(mock_choice):
     # Assert it safely aborted and returned original composition
     assert subbed.serialize_to_string() == nmc.serialize_to_string()
 
-def test_node_execution_and_diversity():
+@pytest.mark.asyncio
+@patch("app.agents.nodes.mutator.validate_material_async", new_callable=AsyncMock, return_value=True)
+@patch("app.agents.nodes.mutator.GraphRAGService.retrieve_context", new_callable=AsyncMock, return_value="ctx")
+async def test_node_execution_and_diversity(_ctx, _validate):
     """
     4 & 5. Node Execution Test & Diversity Verification:
     Run the mutator_node with a dummy population of 20 identical NMC materials.
@@ -95,7 +98,7 @@ def test_node_execution_and_diversity():
     }
     
     # Run the node
-    new_state = mutator_node(state)
+    new_state = await mutator_node(state)
     next_population = new_state["current_population"]
     
     assert len(next_population) == 20
