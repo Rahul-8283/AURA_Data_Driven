@@ -31,10 +31,4 @@ def dummy_reporter_node(state: ResearchState) -> ResearchState:
     state["logs"].append(
         f"[{datetime.utcnow().isoformat()}] Reporter: Evolution complete. Summarizing best candidates."
     )
-    
-    # Just to have something in best_candidates
-    base_class = state.get("base_material_class") or "Material"
-    state["best_candidates"] = [
-        {"id": "winner_1", "composition": f"Optimal_{base_class}", "fitness": 0.99}
-    ]
     return state
