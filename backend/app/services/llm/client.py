@@ -5,10 +5,12 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
 
-client = AsyncOpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=settings.OPENROUTER_API_KEY,
-)
+def get_client() -> AsyncOpenAI:
+    # Built per call: each Celery task runs its own event loop, so a shared client would hold a closed loop.
+    return AsyncOpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=settings.OPENROUTER_API_KEY or "missing-key",
+    )
 
 class PredictionResult(BaseModel):
     specific_capacity: float = Field(..., description="Estimated capacity in mAh/g")
@@ -81,7 +83,7 @@ Return ONLY a valid JSON object matching this schema exactly:
     # Try OpenRouter Free Tier Models in order
     for model_name in FREE_MODELS:
         try:
-            response = await client.chat.completions.create(
+            response = await get_client().chat.completions.create(
                 model=model_name,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
@@ -107,7 +109,7 @@ Return ONLY a valid JSON object matching this schema exactly:
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json"}
         }
-        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload)
+        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload, timeout=30)
         g_resp.raise_for_status()
         content = g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
 
@@ -135,7 +137,7 @@ Return ONLY a valid JSON object:
     content = None
     for model_name in FREE_MODELS:
         try:
-            response = await client.chat.completions.create(
+            response = await get_client().chat.completions.create(
                 model=model_name,
                 messages=[
                     {"role": "system", "content": "You are an expert computational battery chemist. Return strictly JSON."},
@@ -158,7 +160,7 @@ Return ONLY a valid JSON object:
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json"}
         }
-        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload)
+        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload, timeout=30)
         g_resp.raise_for_status()
         content = g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
 
