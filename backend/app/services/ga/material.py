@@ -8,7 +8,7 @@ class BatteryMaterial:
     composition: Dict[str, float] = field(default_factory=dict)
     
     # Common transition metals and dopants in battery cathodes
-    TRANSITION_METALS = {"Ni", "Co", "Mn", "Al", "Fe", "Ti", "V", "Cr", "Cu", "Zn", "Zr", "Mg", "W", "Mo"}
+    TRANSITION_METALS = {"Ni", "Co", "Mn", "Al", "Fe", "Ti", "V", "Cr", "Cu", "Zn", "Zr", "Mg", "W", "Mo", "Nb"}
 
     def __post_init__(self):
         """
