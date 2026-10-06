@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 
+type TaskStatus = 'idle' | 'processing' | 'completed' | 'error';
+
 interface ResearchState {
   currentTaskId: string | null;
-  taskStatus: 'idle' | 'processing' | 'completed' | 'error';
+  taskStatus: TaskStatus;
   progress: number;
   logs: string[];
   setTaskId: (id: string) => void;
-  updateStatus: (status: any, progress: number) => void;
+  updateStatus: (status: TaskStatus, progress: number) => void;
   addLog: (log: string) => void;
   reset: () => void;
 }

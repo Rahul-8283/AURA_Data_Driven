@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, AlertCircle, Trash2 } from 'lucide-react';
+import axios from 'axios';
 import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../contexts/useAuth';
 
 type Message = {
   id: string;
@@ -26,9 +27,10 @@ export default function ChatInterface() {
 
   // Fetch history on load
   useEffect(() => {
-    if (!user) return;
+    if (!user || !supabase) return;
+    const client = supabase;
     const fetchHistory = async () => {
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('chat_messages')
         .select('*')
         .eq('user_id', user.id)
@@ -75,7 +77,7 @@ export default function ChatInterface() {
 
     try {
       // Save user message to Supabase
-      if (user) {
+      if (user && supabase) {
         await supabase.from('chat_messages').insert([{
           user_id: user.id,
           role: 'user',
@@ -97,23 +99,24 @@ export default function ChatInterface() {
       setMessages((prev) => [...prev, assistantMessage]);
 
       // Save assistant message to Supabase
-      if (user) {
+      if (user && supabase) {
         await supabase.from('chat_messages').insert([{
           user_id: user.id,
           role: 'assistant',
           content: assistantMessage.content
         }]);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err?.response?.data?.detail || err.message || 'An error occurred while connecting to the backend.');
+      const detail = axios.isAxiosError(err) ? err.response?.data?.detail : undefined;
+      setError(detail || (err instanceof Error ? err.message : 'An error occurred while connecting to the backend.'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleClearChat = async () => {
-    if (!user || !window.confirm("Are you sure you want to clear your chat history?")) return;
+    if (!user || !supabase || !window.confirm("Are you sure you want to clear your chat history?")) return;
     
     // Delete from Supabase
     await supabase.from('chat_messages').delete().eq('user_id', user.id);

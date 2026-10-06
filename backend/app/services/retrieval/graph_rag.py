@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 import requests
 from app.core.config import settings
 from app.services.retrieval.graph_search import get_graph_context
@@ -73,12 +74,14 @@ def reformat_with_llm(query: str, combined_context: str) -> str:
 
 class GraphRAGService:
     @staticmethod
-    async def retrieve_context(query: str) -> str:
+    async def retrieve_context(query: str, summarize: bool = False) -> str:
         """
         Orchestrates the GraphRAG pipeline by concurrently fetching semantic
         evidence from ChromaDB and structural rules from Neo4j, then processes
-        the context using an LLM to generate professional, readable summaries.
+        the fused, section-demarcated context. With summarize=True the context is
+        rewritten by an LLM into prose (used by the chat endpoint only).
         """
+        started = time.perf_counter()
         # Ensure ChromaDB collection is loaded. 
         try:
             collection = await asyncio.to_thread(init_literature_collection)
@@ -117,6 +120,8 @@ class GraphRAGService:
 === LITERATURE EVIDENCE (Contextual Findings) ===
 {vector_results}
 """
-        # Call the LLM formatter in a separate thread to prevent blocking
-        formatted_context = await asyncio.to_thread(reformat_with_llm, query, combined_context.strip())
-        return formatted_context
+        combined_context = combined_context.strip()
+        logger.info(f"GraphRAG retrieval took {time.perf_counter() - started:.2f}s")
+        if not summarize:
+            return combined_context
+        return await asyncio.to_thread(reformat_with_llm, query, combined_context)

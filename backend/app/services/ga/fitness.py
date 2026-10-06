@@ -29,6 +29,10 @@ def calculate_fitness(material: Dict[str, Any], targets: Dict[str, Any]) -> floa
         if target_cost is not None and cost > float(target_cost):
             penalty *= 0.2
             
+        target_cycles = targets.get("cycle_life_gt")
+        if target_cycles is not None and cycle_life < float(target_cycles):
+            penalty *= 0.2
+
         target_voltage = targets.get("voltage_gt")
         if target_voltage is not None and voltage < float(target_voltage):
             penalty *= 0.2

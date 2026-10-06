@@ -8,13 +8,19 @@ def get_chroma_client():
 
 chroma_client = get_chroma_client()
 
+_literature_collection = None
+
 def get_chroma_collection(name: str):
     """Helper to get or create a collection."""
     return chroma_client.get_or_create_collection(name=name)
 
 def init_literature_collection(client=None):
     """Initializes and returns the battery literature collection."""
-    if client is None:
+    global _literature_collection
+    if client is None and _literature_collection is not None:
+        return _literature_collection
+    use_default = client is None
+    if use_default:
         client = chroma_client
     from app.services.embeddings import get_huggingface_embedding_function
     embedding_fn = get_huggingface_embedding_function()
@@ -23,4 +29,6 @@ def init_literature_collection(client=None):
         embedding_function=embedding_fn,
         metadata={"hnsw:space": "cosine"}  # Crucial for accuracy
     )
+    if use_default:
+        _literature_collection = collection
     return collection

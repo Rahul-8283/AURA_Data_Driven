@@ -60,9 +60,12 @@ async def predictor_node(state: ResearchState) -> ResearchState:
     state["current_population"] = processed_pop
     
     # Update Hall of Fame (Top 5 all time)
-    best_candidates = state.get("best_candidates", [])
-    best_candidates.extend(processed_pop)
-    best_candidates = sorted(best_candidates, key=lambda x: x.get("fitness", 0.0), reverse=True)[:5]
+    unique = {}
+    for mat in [*state.get("best_candidates", []), *processed_pop]:
+        key = mat.get("composition")
+        if key not in unique or mat.get("fitness", 0.0) > unique[key].get("fitness", 0.0):
+            unique[key] = mat
+    best_candidates = sorted(unique.values(), key=lambda x: x.get("fitness", 0.0), reverse=True)[:5]
     state["best_candidates"] = best_candidates
     
     best_score = best_candidates[0].get("fitness", 0.0) if best_candidates else 0.0

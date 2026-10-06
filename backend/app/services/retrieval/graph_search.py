@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+import re
 import asyncio
 import requests
 from typing import List
@@ -8,14 +10,47 @@ from app.db.neo4j_client import neo4j_conn
 
 logger = logging.getLogger(__name__)
 
+SEED_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "seed_graph.json")
+
+def _load_seed_vocabulary() -> dict:
+    """Entity names known from the ground-truth seed graph, used when the LLM is unavailable."""
+    vocab = {"Element": set(), "Other": set()}
+    try:
+        with open(SEED_PATH, "r", encoding="utf-8") as f:
+            for t in json.load(f):
+                for label, name in ((t["subject_label"], t["subject"]), (t["object_label"], t["object"])):
+                    vocab["Element" if label == "Element" else "Other"].add(name)
+    except Exception as e:
+        logger.warning(f"Could not load seed vocabulary: {e}")
+    return vocab
+
+def fallback_entities(query: str) -> List[str]:
+    """Dictionary/regex entity lookup against the seed graph."""
+    vocab = _load_seed_vocabulary()
+    found = []
+    lowered = query.lower()
+    remaining = query
+    for name in vocab["Other"]:
+        pattern = rf"(?<![A-Za-z0-9]){re.escape(name.lower())}(?![A-Za-z0-9])"
+        if re.search(pattern, lowered):
+            found.append(name)
+            remaining = re.sub(pattern, " ", remaining, flags=re.IGNORECASE)
+    # Element symbols are case-sensitive; only read them from tokens that are whole formulas (Mg, LiNi0.8Co0.1O2)
+    for token in re.findall(r"[A-Za-z0-9.]+", remaining):
+        if re.fullmatch(r"(?:[A-Z][a-z]?\d*\.?\d*)+", token):
+            for symbol in re.findall(r"[A-Z][a-z]?", token):
+                if symbol in vocab["Element"] and symbol not in found:
+                    found.append(symbol)
+    return found
+
 async def extract_entities(query: str) -> List[str]:
     """
     Uses an LLM (OpenRouter) to perform Named Entity Recognition (NER) on the query,
     extracting battery materials, elements, and degradation modes.
     """
     if not settings.OPENROUTER_API_KEY:
-        logger.warning("OPENROUTER_API_KEY not set. Cannot extract entities for graph search.")
-        return []
+        logger.warning("OPENROUTER_API_KEY not set. Using seed-graph dictionary lookup.")
+        return fallback_entities(query)
 
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
@@ -61,7 +96,7 @@ Query: {query}
         logger.warning(f"All OpenRouter models failed ({last_err}). Falling back to Gemini.")
         if not settings.gemini_api_key:
             logger.error("Gemini API key not set for fallback.")
-            return []
+            return fallback_entities(query)
             
         gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
         gemini_payload = {
@@ -74,7 +109,7 @@ Query: {query}
             raw_text = g_data["candidates"][0]["content"]["parts"][0]["text"]
         except Exception as gemini_e:
             logger.error(f"Gemini API fallback also failed: {gemini_e}")
-            return []
+            return fallback_entities(query)
             
     try:
         # Clean up in case LLM wraps in markdown
@@ -100,13 +135,13 @@ def _run_cypher_search(tx, entities: List[str]):
     # Accounts for the fact that Elements use 'symbol' while Materials use 'name'
     query = """
     MATCH (n)
-    WHERE n.name IN $entities OR n.symbol IN $entities
+    WHERE toLower(n.name) IN $entities OR toLower(n.symbol) IN $entities
     MATCH p=(n)-[*1..2]-(m)
-    WITH p, [x IN nodes(p) WHERE x.name IN $entities OR x.symbol IN $entities] as matched
+    WITH p, [x IN nodes(p) WHERE toLower(x.name) IN $entities OR toLower(x.symbol) IN $entities] as matched
     WHERE size(matched) >= 1
     RETURN p LIMIT 20
     """
-    result = tx.run(query, entities=entities)
+    result = tx.run(query, entities=[e.lower() for e in entities])
     return [record["p"] for record in result]
 
 

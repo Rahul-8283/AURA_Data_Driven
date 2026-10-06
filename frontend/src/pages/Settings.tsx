@@ -17,7 +17,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import AuraMark from '../components/shared/AuraMark';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/useAuth';
 import { supabase } from '../lib/supabase';
 
 const Settings: React.FC = () => {
@@ -51,6 +51,7 @@ const Settings: React.FC = () => {
 
   const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) return;
     setIsUpdatingName(true);
     setNameStatus('idle');
     try {
@@ -81,6 +82,7 @@ const Settings: React.FC = () => {
       return;
     }
 
+    if (!supabase) return;
     setIsUpdatingPassword(true);
     setPasswordStatus('idle');
     try {
@@ -90,10 +92,10 @@ const Settings: React.FC = () => {
       setPassword('');
       setConfirmPassword('');
       setTimeout(() => setPasswordStatus('idle'), 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating password:', error);
       setPasswordStatus('error');
-      setPasswordErrorMsg(error.message || 'Failed to update password');
+      setPasswordErrorMsg(error instanceof Error ? error.message : 'Failed to update password');
     } finally {
       setIsUpdatingPassword(false);
     }

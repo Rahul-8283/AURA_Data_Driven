@@ -4,6 +4,7 @@ import requests
 from datetime import datetime
 from app.agents.state import ResearchState
 from app.core.config import settings
+from app.services.ga.material import BatteryMaterial
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,28 @@ def call_gemini_fallback(prompt: str) -> dict:
     else:
         raise ValueError("No candidates found in Gemini response.")
 
+SEED_FORMULAS = [
+    "LiNi0.334Co0.333Mn0.333O2",  # NMC111
+    "LiNi0.5Co0.2Mn0.3O2",        # NMC532
+    "LiNi0.6Co0.2Mn0.2O2",        # NMC622
+    "LiNi0.8Co0.1Mn0.1O2",        # NMC811
+    "LiNi0.5Mn0.5O2",             # Co-free
+    "LiNi0.8Mn0.1Al0.1O2",        # Co-free
+]
+POPULATION_SIZE = 10
+
+def build_seed_population(excluded_elements: list) -> list:
+    """Seed the GA with baseline layered oxides that contain no excluded element."""
+    excluded = {e.strip().capitalize() for e in excluded_elements}
+    allowed = [
+        f for f in SEED_FORMULAS
+        if not excluded & set(BatteryMaterial.parse_string_to_dict(f))
+    ] or ["LiNi0.5Mn0.5O2"]
+    return [
+        {"id": f"seed_{i}", "composition": allowed[i % len(allowed)], "fitness": 0.0}
+        for i in range(POPULATION_SIZE)
+    ]
+
 def planner_node(state: ResearchState) -> ResearchState:
     """
     Planner Node:
@@ -127,13 +150,8 @@ def planner_node(state: ResearchState) -> ResearchState:
     state["current_generation"] = 0
     state["max_generations"] = 20
     
-    # Generate Dummy Seed Materials
-    base_class = state["base_material_class"] or "Material"
-    state["current_population"] = [
-        {"id": f"seed_{i}", "composition": f"Baseline_{base_class}_Var{i}", "fitness": 0.0}
-        for i in range(10)
-    ]
-    
-    state["logs"].append(f"[{datetime.utcnow().isoformat()}] Population seeded with 10 variations. Ready for generation 0.")
+    state["current_population"] = build_seed_population(state["excluded_elements"])
+
+    state["logs"].append(f"[{datetime.utcnow().isoformat()}] Population seeded with {len(state['current_population'])} baseline materials. Ready for generation 0.")
     
     return state

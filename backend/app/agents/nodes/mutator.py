@@ -32,7 +32,10 @@ async def mutator_node(state: ResearchState) -> ResearchState:
     
     # 4. Generation Loop with Validation
     invalid_count = 0
+    attempts = 0
+    max_attempts = target_size * 20
     while len(next_population) < target_size:
+        attempts += 1
         # Use Tournament Selection to pick a parent
         parent1_dict = tournament_selection(current_pop)
         parent1_mat = BatteryMaterial(formula=parent1_dict["composition"])
@@ -64,7 +67,7 @@ async def mutator_node(state: ResearchState) -> ResearchState:
             # On error, we assume valid to not block evolution forever
             is_valid = True
             
-        if not is_valid:
+        if not is_valid and attempts < max_attempts:
             invalid_count += 1
             continue
             
