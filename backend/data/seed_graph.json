@@ -1036,7 +1036,7 @@
     "object": "C"
   },
   {
-    "subject_label": "Element",
+    "subject_label": "Material",
     "subject": "Graphite",
     "predicate": "CAN_BE_DOPED_WITH",
     "object_label": "Element",
