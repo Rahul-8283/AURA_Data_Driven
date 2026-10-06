@@ -4,3 +4,20 @@
 #literature
 *.pdf
 .DS_Store
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Local data
+backend/chroma_data/
+
+# Node
+node_modules/
+dist/
