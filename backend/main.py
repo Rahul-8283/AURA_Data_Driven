@@ -1,4 +1,8 @@
-from fastapi import FastAPI, Depends
+import asyncio
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
@@ -9,7 +13,19 @@ load_dotenv()
 from app.core.config import settings
 from app.api.v1.router import api_router
 
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.db.neo4j_setup import setup_constraints
+    try:
+        await asyncio.to_thread(setup_constraints)
+    except Exception as e:
+        logger.error(f"Neo4j constraint setup skipped: {e}")
+    yield
+
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.PROJECT_NAME,
     description="Core AI analysis engine for AURA.",
     version="1.0.0"
