@@ -17,8 +17,12 @@ psycopg2-binary==2.9.9
 SQLAlchemy==2.0.31
 
 # AI, LLM & Orchestration
-openai==1.35.3
-httpx==0.27.2
+# openai>=1.55.2 is required for compatibility with httpx>=0.28 (which
+# dropped the `proxies` kwarg that older openai releases still passed
+# internally, causing 'AsyncClient.__init__() got an unexpected keyword
+# argument 'proxies'' and orphaned-client '_state' AttributeErrors).
+openai==1.109.1
+httpx==0.28.1
 langgraph
 
 # Asynchronous Tasks & Message Broker

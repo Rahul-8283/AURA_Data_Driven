@@ -24,11 +24,26 @@ Estimate the specific capacity (mAh/g), nominal voltage (V), cycle life, and cos
 You MUST base your prediction primarily on the provided GraphRAG literature context. If the context states that Al doping reduces capacity but increases thermal stability, your numerical predictions MUST reflect a drop in capacity and a rise in cycle life compared to standard baselines.
 """
 
-FREE_MODELS = [
-    "inclusionai/ling-3.0-flash-sante:free",
-    "dots-studio/dots-3-note-preview:free",
-    "liquid/lfm-2.5-2.6b:free",
-]
+async def call_openrouter_free(messages: list[dict], temperature: float) -> str | None:
+    """Single call to OpenRouter's Free Models Router (model="openrouter/free"),
+    which auto-selects a live free model per request instead of a hardcoded
+    slug that 404s once OpenRouter rotates its free-tier catalog.
+
+    Uses `async with` so the underlying httpx client is always closed instead
+    of being garbage-collected later on a possibly-closed event loop (which
+    surfaced as 'AsyncHttpxClientWrapper' object has no attribute '_state').
+    """
+    try:
+        async with get_client() as client:
+            response = await client.chat.completions.create(
+                model="openrouter/free",
+                messages=messages,
+                temperature=temperature,
+            )
+            return response.choices[0].message.content
+    except Exception as e:
+        print(f"OpenRouter free-router call failed: {e}")
+        return None
 
 def clean_json_string(raw: str) -> str:
     cleaned = raw.strip()
@@ -77,30 +92,17 @@ Return ONLY a valid JSON object matching this schema exactly:
 }}
 """
     
-    content = None
-    last_error = None
+    content = await call_openrouter_free(
+        [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.1,
+    )
 
-    # Try OpenRouter Free Tier Models in order
-    for model_name in FREE_MODELS:
-        try:
-            response = await get_client().chat.completions.create(
-                model=model_name,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1
-            )
-            content = response.choices[0].message.content
-            if content:
-                break
-        except Exception as e:
-            last_error = e
-            print(f"OpenRouter model {model_name} failed: {e}. Trying next...")
-
-    # Fallback to Gemini if all free OpenRouter models failed
+    # Fallback to Gemini if OpenRouter's free router failed
     if not content:
-        print(f"All OpenRouter free models failed ({last_error}). Falling back to Gemini 2.5 Flash...")
+        print("OpenRouter free router failed. Falling back to Gemini 2.5 Flash...")
         import requests
         import asyncio
         gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
@@ -143,28 +145,16 @@ Top 5 discovered materials:
 
 Write the 3-paragraph executive summary now."""
 
-    content = None
-    last_error = None
-
-    for model_name in FREE_MODELS:
-        try:
-            response = await get_client().chat.completions.create(
-                model=model_name,
-                messages=[
-                    {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3
-            )
-            content = response.choices[0].message.content
-            if content:
-                break
-        except Exception as e:
-            last_error = e
-            print(f"OpenRouter model {model_name} failed: {e}. Trying next...")
+    content = await call_openrouter_free(
+        [
+            {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3,
+    )
 
     if not content:
-        print(f"All OpenRouter free models failed ({last_error}). Falling back to Gemini 2.5 Flash...")
+        print("OpenRouter free router failed. Falling back to Gemini 2.5 Flash...")
         import requests
         import asyncio
         gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
@@ -194,22 +184,13 @@ Return ONLY a valid JSON object:
   "is_valid": true
 }}
 """
-    content = None
-    for model_name in FREE_MODELS:
-        try:
-            response = await get_client().chat.completions.create(
-                model=model_name,
-                messages=[
-                    {"role": "system", "content": "You are an expert computational battery chemist. Return strictly JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.0
-            )
-            content = response.choices[0].message.content
-            if content:
-                break
-        except Exception:
-            pass
+    content = await call_openrouter_free(
+        [
+            {"role": "system", "content": "You are an expert computational battery chemist. Return strictly JSON."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.0,
+    )
 
     if not content:
         import requests

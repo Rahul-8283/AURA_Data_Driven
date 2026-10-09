@@ -67,33 +67,25 @@ Example Output:
 
 Query: {query}
 """
-    free_models = [
-        "inclusionai/ling-3.0-flash-sante:free",
-        "dots-studio/dots-3-note-preview:free",
-        "liquid/lfm-2.5-2.6b:free",
-    ]
+    # OpenRouter's Free Models Router auto-selects a live free model per
+    # request, avoiding hardcoded ":free" slugs that 404 once OpenRouter
+    # rotates its free-tier catalog.
+    payload = {
+        "model": "openrouter/free",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.1
+    }
     raw_text = None
-    last_err = None
-
-    for model_name in free_models:
-        payload = {
-            "model": model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1
-        }
-        try:
-            resp = await asyncio.to_thread(requests.post, url, headers=headers, json=payload, timeout=15)
-            resp.raise_for_status()
-            data = resp.json()
-            raw_text = data["choices"][0]["message"]["content"]
-            if raw_text:
-                break
-        except Exception as e:
-            last_err = e
-            logger.warning(f"OpenRouter model {model_name} failed: {e}. Trying next...")
+    try:
+        resp = await asyncio.to_thread(requests.post, url, headers=headers, json=payload, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        raw_text = data["choices"][0]["message"]["content"]
+    except Exception as e:
+        logger.warning(f"OpenRouter free router failed: {e}")
 
     if not raw_text:
-        logger.warning(f"All OpenRouter models failed ({last_err}). Falling back to Gemini.")
+        logger.warning("Falling back to Gemini.")
         if not settings.gemini_api_key:
             logger.error("Gemini API key not set for fallback.")
             return fallback_entities(query)

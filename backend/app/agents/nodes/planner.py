@@ -39,40 +39,29 @@ def parse_llm_json(response_text: str) -> dict:
     return json.loads(cleaned.strip())
 
 def call_openrouter(prompt: str) -> dict:
-    """Attempt to call OpenRouter using free models."""
+    """Call OpenRouter via its Free Models Router, which auto-selects a live
+    free model per request instead of a hardcoded slug that can 404 once
+    OpenRouter rotates its free-tier catalog."""
     api_key = settings.OPENROUTER_API_KEY or getattr(settings, "openrouter_api_key", None)
     if not api_key:
         raise ValueError("OpenRouter API key missing")
-        
-    free_models = [
-        "inclusionai/ling-3.0-flash-sante:free",
-        "dots-studio/dots-3-note-preview:free",
-        "liquid/lfm-2.5-2.6b:free",
-    ]
-    last_err = None
-    for model_name in free_models:
-        try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model_name,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.1
-                },
-                timeout=15
-            )
-            response.raise_for_status()
-            content = response.json()["choices"][0]["message"]["content"]
-            return parse_llm_json(content)
-        except Exception as e:
-            last_err = e
-            logger.warning(f"Planner OpenRouter model {model_name} failed: {e}. Trying next...")
-            
-    raise ValueError(f"All OpenRouter free models failed: {last_err}")
+
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "openrouter/free",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1
+        },
+        timeout=15
+    )
+    response.raise_for_status()
+    content = response.json()["choices"][0]["message"]["content"]
+    return parse_llm_json(content)
 
 def call_gemini_fallback(prompt: str) -> dict:
     """Fallback to Gemini 2.5 Flash."""
