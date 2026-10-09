@@ -15,6 +15,15 @@ import { useNavigate } from 'react-router-dom';
 import AuraMark from '../components/shared/AuraMark';
 import { supabase } from '../lib/supabase';
 import ChatInterface from '../components/dashboard/ChatInterface';
+import ReportsPanel from '../components/dashboard/ReportsPanel';
+
+type WorkspaceView = 'discovery' | 'evidence' | 'reports';
+
+const VIEW_LABELS: Record<WorkspaceView, string> = {
+  discovery: 'Discovery space',
+  evidence: 'Evidence graph',
+  reports: 'Research reports',
+};
 
 type WorkspaceUser = {
   name: string;
@@ -33,6 +42,7 @@ const Dashboard = () => {
   const isLocalPreview = import.meta.env.DEV && !supabase;
   const [user, setUser] = useState<WorkspaceUser | null>(() => isLocalPreview ? previewUser : null);
   const [loading, setLoading] = useState(() => !isLocalPreview);
+  const [activeView, setActiveView] = useState<WorkspaceView>('discovery');
   const previewMode = isLocalPreview;
 
   useEffect(() => {
@@ -93,9 +103,27 @@ const Dashboard = () => {
         </div>
 
         <nav className="workspace-nav" aria-label="Research workspace navigation">
-          <a className="workspace-nav__item workspace-nav__item--active" href="#discovery"><MessageSquare size={17} /> Discovery space</a>
-          <a className="workspace-nav__item" href="#evidence"><Database size={17} /> Evidence graph</a>
-          <a className="workspace-nav__item" href="#reports"><FileText size={17} /> Research reports</a>
+          <button
+            type="button"
+            className={`workspace-nav__item ${activeView === 'discovery' ? 'workspace-nav__item--active' : ''}`}
+            onClick={() => setActiveView('discovery')}
+          >
+            <MessageSquare size={17} /> Discovery space
+          </button>
+          <button
+            type="button"
+            className={`workspace-nav__item ${activeView === 'evidence' ? 'workspace-nav__item--active' : ''}`}
+            onClick={() => setActiveView('evidence')}
+          >
+            <Database size={17} /> Evidence graph
+          </button>
+          <button
+            type="button"
+            className={`workspace-nav__item ${activeView === 'reports' ? 'workspace-nav__item--active' : ''}`}
+            onClick={() => setActiveView('reports')}
+          >
+            <FileText size={17} /> Research reports
+          </button>
         </nav>
 
         <div className="workspace-sidebar__bottom">
@@ -106,7 +134,7 @@ const Dashboard = () => {
 
       <main className="workspace-main">
         <header className="workspace-header">
-          <div className="workspace-breadcrumb"><span>Research space</span><ChevronDown size={14} /><strong>High-energy cathodes</strong></div>
+          <div className="workspace-breadcrumb"><span>Research space</span><ChevronDown size={14} /><strong>{VIEW_LABELS[activeView]}</strong></div>
           <div className="workspace-header__actions">
             <button type="button" className="workspace-header__icon" aria-label="Search"><Search size={18} /></button>
             <button type="button" className="workspace-header__icon workspace-header__icon--notification" aria-label="Notifications"><Bell size={18} /><i /></button>
@@ -115,7 +143,13 @@ const Dashboard = () => {
         </header>
 
         <div className="workspace-content">
-          <ChatInterface />
+          {activeView === 'discovery' && <ChatInterface />}
+          {activeView === 'reports' && <ReportsPanel />}
+          {activeView === 'evidence' && (
+            <p className="reports-panel__empty">
+              Open a completed research report to explore its chemistry knowledge graph.
+            </p>
+          )}
         </div>
       </main>
     </div>
