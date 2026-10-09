@@ -24,6 +24,9 @@ class ResearchState(TypedDict):
     # Frontend Communication
     logs: List[str]                           # String logs meant to be flushed to Redis for UI
 
+    # Reporter Node Output (Phase 8)
+    final_summary: str                        # LLM-written executive summary of the top candidates
+
 def init_research_state(task_id: str, user_prompt: str, user_id: str = "default_user") -> ResearchState:
     """Helper function to initialize the state object."""
     return {
@@ -38,5 +41,6 @@ def init_research_state(task_id: str, user_prompt: str, user_id: str = "default_
         "max_generations": 0,
         "current_population": [],
         "best_candidates": [],
-        "logs": [f"[{datetime.utcnow().isoformat()}] Initialization complete. Task {task_id} started."]
+        "logs": [f"[{datetime.utcnow().isoformat()}] Initialization complete. Task {task_id} started."],
+        "final_summary": "",
     }

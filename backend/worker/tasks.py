@@ -77,8 +77,8 @@ def process_chroma_chunks_task(self):
 
 
 @celery_app.task(bind=True, name="run_discovery_loop")
-def run_discovery_loop(self, user_prompt: str, task_id: str):
-    initial_state = init_research_state(task_id, user_prompt)
+def run_discovery_loop(self, user_prompt: str, task_id: str, user_id: str = "default_user"):
+    initial_state = init_research_state(task_id, user_prompt, user_id)
 
     async def _run():
         last_state = initial_state
@@ -107,4 +107,5 @@ def run_discovery_loop(self, user_prompt: str, task_id: str):
         "status": "success",
         "generation": last_state.get("current_generation", 0),
         "results": last_state.get("best_candidates", []),
+        "executive_summary": last_state.get("final_summary", ""),
     }

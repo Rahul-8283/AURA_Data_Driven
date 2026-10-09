@@ -121,6 +121,66 @@ Return ONLY a valid JSON object matching this schema exactly:
     except Exception as e:
         raise ValueError(f"Failed to parse LLM response: {content}, Error: {e}")
 
+SUMMARY_SYSTEM_PROMPT = """You are writing the executive summary for a battery material discovery report.
+Review the user's initial request and the top 5 materials the AI discovered.
+Write a highly professional, 3-paragraph summary explaining the evolutionary path taken, why these specific
+materials outcompete standard baselines, and what their primary trade-offs are based on their predicted properties.
+Write plain prose only, no markdown headers or bullet points."""
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+async def summarize_report_async(user_prompt: str, top_candidates: list[dict]) -> str:
+    candidates_text = "\n".join(
+        f"- {c.get('composition')}: capacity={c.get('specific_capacity')} mAh/g, "
+        f"voltage={c.get('voltage')} V, cycle_life={c.get('cycle_life')}, "
+        f"cost=${c.get('cost_estimate_usd_kg')}/kg, fitness={c.get('fitness')}, "
+        f"reasoning={c.get('reasoning')}"
+        for c in top_candidates
+    )
+    prompt = f"""User's original request: {user_prompt}
+
+Top 5 discovered materials:
+{candidates_text}
+
+Write the 3-paragraph executive summary now."""
+
+    content = None
+    last_error = None
+
+    for model_name in FREE_MODELS:
+        try:
+            response = await get_client().chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3
+            )
+            content = response.choices[0].message.content
+            if content:
+                break
+        except Exception as e:
+            last_error = e
+            print(f"OpenRouter model {model_name} failed: {e}. Trying next...")
+
+    if not content:
+        print(f"All OpenRouter free models failed ({last_error}). Falling back to Gemini 2.5 Flash...")
+        import requests
+        import asyncio
+        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
+        payload = {
+            "systemInstruction": {"parts": [{"text": SUMMARY_SYSTEM_PROMPT}]},
+            "contents": [{"parts": [{"text": prompt}]}],
+        }
+        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload, timeout=30)
+        g_resp.raise_for_status()
+        content = g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+    if not content:
+        raise ValueError("No executive summary content returned from any LLM provider.")
+
+    return content.strip()
+
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
 async def validate_material_async(material_composition: str, context: str) -> bool:
     prompt = f"""Material Composition: {material_composition}
