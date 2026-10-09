@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import api from '../lib/api';
 import type { ResearchStatusResponse } from '../types/research';
+import MaterialCard from '../components/results/MaterialCard';
+import EvolutionChart from '../components/results/EvolutionChart';
 
 const Results = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -38,6 +40,7 @@ const Results = () => {
   }
 
   const candidates = status.results ?? [];
+  const history = status.generation_history ?? [];
 
   return (
     <div className="workspace-shell" style={{ gridTemplateColumns: '1fr' }}>
@@ -49,40 +52,32 @@ const Results = () => {
           <div className="workspace-breadcrumb"><strong>Research Report</strong></div>
         </header>
 
-        <div className="workspace-content">
+        <div className="results-page">
           {status.executive_summary && (
-            <section style={{ marginBottom: 32 }}>
-              <h2 style={{ fontFamily: 'var(--heading)', color: 'var(--paper)' }}>Executive Summary</h2>
-              <p style={{ color: 'var(--text-muted)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{status.executive_summary}</p>
+            <section className="results-section">
+              <h2>Executive Summary</h2>
+              <p className="results-summary">{status.executive_summary}</p>
             </section>
           )}
 
-          <section>
-            <h2 style={{ fontFamily: 'var(--heading)', color: 'var(--paper)' }}>Top Candidates</h2>
-            <div style={{ display: 'grid', gap: 16, marginTop: 16 }}>
-              {candidates.map((mat) => (
-                <div
-                  key={mat.id ?? mat.composition}
-                  style={{
-                    padding: 20,
-                    border: '1px solid var(--line)',
-                    borderRadius: 12,
-                    background: 'var(--surface)',
-                  }}
-                >
-                  <strong style={{ fontFamily: 'var(--mono)', color: 'var(--brass-bright)' }}>{mat.composition}</strong>
-                  <div style={{ display: 'flex', gap: 24, margin: '10px 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    <span>Capacity: {mat.specific_capacity} mAh/g</span>
-                    <span>Voltage: {mat.voltage} V</span>
-                    <span>Cycle life: {mat.cycle_life}</span>
-                    <span>Cost: ${mat.cost_estimate_usd_kg}/kg</span>
-                    <span>Fitness: {mat.fitness.toFixed(2)}</span>
-                  </div>
-                  <p style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>{mat.reasoning}</p>
-                </div>
-              ))}
-              {candidates.length === 0 && <p style={{ color: 'var(--text-dim)' }}>No candidates were found for this task.</p>}
-            </div>
+          {history.length > 0 && (
+            <section className="results-section">
+              <h2>Evolution Progress</h2>
+              <EvolutionChart data={history} />
+            </section>
+          )}
+
+          <section className="results-section">
+            <h2>Top Candidates</h2>
+            {candidates.length === 0 ? (
+              <p style={{ color: 'var(--text-dim)' }}>No candidates were found for this task.</p>
+            ) : (
+              <div className="material-card-grid">
+                {candidates.map((mat, idx) => (
+                  <MaterialCard key={mat.id ?? mat.composition} material={mat} rank={idx + 1} />
+                ))}
+              </div>
+            )}
           </section>
         </div>
       </main>

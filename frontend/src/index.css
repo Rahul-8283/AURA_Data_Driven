@@ -3285,3 +3285,142 @@ input:focus-visible {
   border-top: 1px solid rgba(255, 255, 255, 0.04);
   white-space: pre-wrap;
 }
+
+/* ---------------------------------------------------------------- */
+/* Results page (Phase 8): material cards, radar/evolution charts   */
+/* ---------------------------------------------------------------- */
+
+.results-page {
+  width: min(1280px, calc(100% - 76px));
+  margin: 0 auto;
+  padding: 50px 0 80px;
+}
+
+.results-section {
+  margin-bottom: 44px;
+}
+
+.results-section h2 {
+  margin: 0 0 16px;
+  color: var(--paper);
+  font-family: var(--heading);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.results-summary {
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  backdrop-filter: blur(10px);
+  color: var(--text-muted);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.material-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.material-card {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  backdrop-filter: blur(10px);
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.material-card:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+}
+
+.material-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.material-card__rank {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #4a3a25;
+  border: 1px solid rgba(199, 152, 88, 0.55);
+  color: var(--brass-bright);
+  font-family: var(--heading);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.material-card__formula {
+  font-family: var(--mono);
+  color: var(--paper);
+  font-size: 0.95rem;
+}
+
+.material-card__body {
+  display: grid;
+  gap: 14px;
+}
+
+.material-card__stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.material-card__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.material-card__stat span {
+  color: var(--text-dim);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.material-card__stat strong {
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.material-card__radar-caption {
+  display: block;
+  margin-top: -6px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.6rem;
+}
+
+.material-card__reasoning {
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.evolution-chart {
+  padding: 20px 20px 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  backdrop-filter: blur(10px);
+}
