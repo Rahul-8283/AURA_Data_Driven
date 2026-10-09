@@ -3424,3 +3424,67 @@ input:focus-visible {
   background: var(--surface);
   backdrop-filter: blur(10px);
 }
+
+.results-section__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.results-section__header-row h2 {
+  margin: 0;
+}
+
+.material-graph__select {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--surface-raised);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+
+.material-graph {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+.material-graph__status {
+  padding: 40px 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text-dim);
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.material-graph__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 10px;
+  padding: 10px 8px 2px;
+}
+
+.material-graph__legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 0.68rem;
+}
+
+.material-graph__legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}

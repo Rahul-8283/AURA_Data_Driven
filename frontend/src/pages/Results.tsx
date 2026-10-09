@@ -5,12 +5,14 @@ import api from '../lib/api';
 import type { ResearchStatusResponse } from '../types/research';
 import MaterialCard from '../components/results/MaterialCard';
 import EvolutionChart from '../components/results/EvolutionChart';
+import MaterialGraph from '../components/results/MaterialGraph';
 
 const Results = () => {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const [status, setStatus] = useState<ResearchStatusResponse | null>(null);
   const [error, setError] = useState('');
+  const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
 
   useEffect(() => {
     if (!taskId) return;
@@ -41,6 +43,7 @@ const Results = () => {
 
   const candidates = status.results ?? [];
   const history = status.generation_history ?? [];
+  const graphMaterial = selectedMaterial ?? candidates[0]?.composition ?? null;
 
   return (
     <div className="workspace-shell" style={{ gridTemplateColumns: '1fr' }}>
@@ -79,6 +82,24 @@ const Results = () => {
               </div>
             )}
           </section>
+
+          {candidates.length > 0 && graphMaterial && (
+            <section className="results-section">
+              <div className="results-section__header-row">
+                <h2>Chemistry Knowledge Graph</h2>
+                <select
+                  className="material-graph__select"
+                  value={graphMaterial}
+                  onChange={(e) => setSelectedMaterial(e.target.value)}
+                >
+                  {candidates.map((mat) => (
+                    <option key={mat.composition} value={mat.composition}>{mat.composition}</option>
+                  ))}
+                </select>
+              </div>
+              <MaterialGraph materialName={graphMaterial} />
+            </section>
+          )}
         </div>
       </main>
     </div>
