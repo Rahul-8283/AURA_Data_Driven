@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { motion } from 'framer-motion';
+import Lenis from 'lenis';
 import api from '../lib/api';
 import type { ResearchStatusResponse } from '../types/research';
 import MaterialCard from '../components/results/MaterialCard';
 import EvolutionChart from '../components/results/EvolutionChart';
 import MaterialGraph from '../components/results/MaterialGraph';
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
 
 const Results = () => {
   const { taskId } = useParams<{ taskId: string }>();
@@ -13,6 +20,18 @@ const Results = () => {
   const [status, setStatus] = useState<ResearchStatusResponse | null>(null);
   const [error, setError] = useState('');
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
+
+  useEffect(() => {
+    const lenis = new Lenis();
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+    return () => {
+      lenis.destroy();
+    };
+  }, []);
 
   useEffect(() => {
     if (!taskId) return;
@@ -57,34 +76,64 @@ const Results = () => {
 
         <div className="results-page">
           {status.executive_summary && (
-            <section className="results-section">
+            <motion.section
+              className="results-section"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeInUp}
+            >
               <h2>Executive Summary</h2>
               <p className="results-summary">{status.executive_summary}</p>
-            </section>
+            </motion.section>
           )}
 
           {history.length > 0 && (
-            <section className="results-section">
+            <motion.section
+              className="results-section"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeInUp}
+            >
               <h2>Evolution Progress</h2>
               <EvolutionChart data={history} />
-            </section>
+            </motion.section>
           )}
 
-          <section className="results-section">
+          <motion.section
+            className="results-section"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-80px' }}
+            variants={fadeInUp}
+          >
             <h2>Top Candidates</h2>
             {candidates.length === 0 ? (
               <p style={{ color: 'var(--text-dim)' }}>No candidates were found for this task.</p>
             ) : (
-              <div className="material-card-grid">
+              <motion.div
+                className="material-card-grid"
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: '-80px' }}
+                transition={{ staggerChildren: 0.12 }}
+              >
                 {candidates.map((mat, idx) => (
                   <MaterialCard key={mat.id ?? mat.composition} material={mat} rank={idx + 1} />
                 ))}
-              </div>
+              </motion.div>
             )}
-          </section>
+          </motion.section>
 
           {candidates.length > 0 && graphMaterial && (
-            <section className="results-section">
+            <motion.section
+              className="results-section"
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: '-80px' }}
+              variants={fadeInUp}
+            >
               <div className="results-section__header-row">
                 <h2>Chemistry Knowledge Graph</h2>
                 <select
@@ -98,7 +147,7 @@ const Results = () => {
                 </select>
               </div>
               <MaterialGraph materialName={graphMaterial} />
-            </section>
+            </motion.section>
           )}
         </div>
       </main>

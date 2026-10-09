@@ -1,6 +1,12 @@
+import { motion } from 'framer-motion';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import type { MaterialCandidate } from '../../types/research';
 import { NMC811_BASELINE } from '../../lib/baseline';
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
 
 function buildRadarData(material: MaterialCandidate) {
   const safeCost = material.cost_estimate_usd_kg > 0 ? material.cost_estimate_usd_kg : 0.01;
@@ -25,7 +31,7 @@ export default function MaterialCard({ material, rank }: { material: MaterialCan
   const radarData = buildRadarData(material);
 
   return (
-    <div className="material-card">
+    <motion.div className="material-card" variants={cardVariants}>
       <div className="material-card__header">
         <span className="material-card__rank">#{rank}</span>
         <strong className="material-card__formula">{material.composition}</strong>
@@ -60,6 +66,6 @@ export default function MaterialCard({ material, rank }: { material: MaterialCan
       </div>
 
       <p className="material-card__reasoning">{material.reasoning}</p>
-    </div>
+    </motion.div>
   );
 }
