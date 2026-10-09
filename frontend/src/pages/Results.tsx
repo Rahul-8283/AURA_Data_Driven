@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Lenis from 'lenis';
 import api from '../lib/api';
@@ -8,6 +8,7 @@ import type { ResearchStatusResponse } from '../types/research';
 import MaterialCard from '../components/results/MaterialCard';
 import EvolutionChart from '../components/results/EvolutionChart';
 import MaterialGraph from '../components/results/MaterialGraph';
+import { exportReportPdf } from '../lib/exportReportPdf';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 24 },
@@ -20,6 +21,18 @@ const Results = () => {
   const [status, setStatus] = useState<ResearchStatusResponse | null>(null);
   const [error, setError] = useState('');
   const [selectedMaterial, setSelectedMaterial] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPdf = async () => {
+    if (!reportRef.current || exporting) return;
+    setExporting(true);
+    try {
+      await exportReportPdf(reportRef.current, `AURA-Discovery-Report-${taskId}.pdf`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     const lenis = new Lenis();
@@ -72,9 +85,15 @@ const Results = () => {
             <ArrowLeft size={18} />
           </button>
           <div className="workspace-breadcrumb"><strong>Research Report</strong></div>
+          <div className="workspace-header__actions">
+            <button type="button" className="results-download-btn" onClick={handleDownloadPdf} disabled={exporting}>
+              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              {exporting ? 'Preparing PDF…' : 'Download Full Report'}
+            </button>
+          </div>
         </header>
 
-        <div className="results-page">
+        <div className="results-page" ref={reportRef}>
           {status.executive_summary && (
             <motion.section
               className="results-section"
