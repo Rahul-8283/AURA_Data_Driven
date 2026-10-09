@@ -20,7 +20,10 @@ class ResearchState(TypedDict):
     
     # Hall of Fame
     best_candidates: List[Dict[str, Any]]     # The top 5 materials found across all runs
-    
+
+    # Evolution Tracking (Phase 8 chart data)
+    generation_history: List[Dict[str, Any]]  # [{generation, best_score, average_score}, ...]
+
     # Frontend Communication
     logs: List[str]                           # String logs meant to be flushed to Redis for UI
 
@@ -41,6 +44,7 @@ def init_research_state(task_id: str, user_prompt: str, user_id: str = "default_
         "max_generations": 0,
         "current_population": [],
         "best_candidates": [],
+        "generation_history": [],
         "logs": [f"[{datetime.utcnow().isoformat()}] Initialization complete. Task {task_id} started."],
         "final_summary": "",
     }

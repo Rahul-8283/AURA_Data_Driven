@@ -69,7 +69,14 @@ async def predictor_node(state: ResearchState) -> ResearchState:
     state["best_candidates"] = best_candidates
     
     best_score = best_candidates[0].get("fitness", 0.0) if best_candidates else 0.0
-    
+    average_score = sum(m.get("fitness", 0.0) for m in processed_pop) / len(processed_pop)
+
+    state.setdefault("generation_history", []).append({
+        "generation": state.get("current_generation", 0),
+        "best_score": round(best_score, 2),
+        "average_score": round(average_score, 2),
+    })
+
     state.setdefault("logs", []).append(f"[{datetime.now(timezone.utc).isoformat()}] Predictor: Processed {len(processed_pop)} materials concurrently. Best Score: {best_score:.2f}")
-    
+
     return state

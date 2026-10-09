@@ -15,6 +15,7 @@ def _persist_results(
     user_id: str,
     best_candidates: List[Dict[str, Any]],
     summary: str,
+    generation_history: List[Dict[str, Any]],
 ) -> None:
     """
     Synchronous Supabase writes, run off the event loop via asyncio.to_thread.
@@ -26,6 +27,7 @@ def _persist_results(
         "result_json": {
             "top_candidates": best_candidates,
             "executive_summary": summary,
+            "generation_history": generation_history,
         },
     }).eq("id", task_id).execute()
 
@@ -73,7 +75,14 @@ async def reporter_node(state: ResearchState) -> ResearchState:
     )
 
     try:
-        await asyncio.to_thread(_persist_results, task_id, user_id, best_candidates, summary)
+        await asyncio.to_thread(
+            _persist_results,
+            task_id,
+            user_id,
+            best_candidates,
+            summary,
+            state.get("generation_history", []),
+        )
         state.setdefault("logs", []).append(
             f"[{datetime.now(timezone.utc).isoformat()}] Reporter: Persisted results to Supabase."
         )

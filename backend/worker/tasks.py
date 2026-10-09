@@ -108,4 +108,5 @@ def run_discovery_loop(self, user_prompt: str, task_id: str, user_id: str = "def
         "generation": last_state.get("current_generation", 0),
         "results": last_state.get("best_candidates", []),
         "executive_summary": last_state.get("final_summary", ""),
+        "generation_history": last_state.get("generation_history", []),
     }

@@ -60,7 +60,8 @@ async def get_research_status(task_id: str):
             "generation": result.get("generation", 0),
             "best_score": best_score,
             "results": candidates,
-            "executive_summary": result.get("executive_summary", "")
+            "executive_summary": result.get("executive_summary", ""),
+            "generation_history": result.get("generation_history", [])
         }
     elif task_result.state == 'FAILURE':
         return {"status": "Failed", "error": str(task_result.info)}
