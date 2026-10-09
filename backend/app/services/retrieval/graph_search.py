@@ -4,7 +4,7 @@ import os
 import re
 import asyncio
 import requests
-from typing import List
+from typing import Dict, List
 from app.core.config import settings
 from app.db.neo4j_client import neo4j_conn
 
@@ -128,6 +128,71 @@ Query: {query}
     except Exception as e:
         logger.error(f"Failed to parse or validate LLM output: {e}")
         return []
+
+
+def _run_material_graph_query(tx, symbols: List[str]):
+    """
+    Fetches each matched element and its 1-hop neighbors (Property, DegradationMode),
+    used to render the interactive knowledge graph for a specific material.
+    """
+    query = """
+    MATCH (e:Element)
+    WHERE toLower(e.symbol) IN $symbols
+    OPTIONAL MATCH (e)-[r]-(n)
+    WHERE n:Property OR n:DegradationMode
+    RETURN e.symbol AS element, type(r) AS rel_type, labels(n) AS neighbor_labels,
+           coalesce(n.name, n.symbol) AS neighbor_name
+    """
+    result = tx.run(query, symbols=[s.lower() for s in symbols])
+    return [dict(record) for record in result]
+
+
+def get_material_graph(material_name: str, element_symbols: List[str]) -> dict:
+    """
+    Builds a { nodes: [], links: [] } payload for react-force-graph-2d.
+    The material itself is a synthetic root node (not required to exist in Neo4j)
+    linked via CONTAINS to every constituent element parsed from its formula.
+    Elements that Neo4j recognizes are additionally expanded one hop to their
+    known properties and degradation modes.
+    """
+    nodes: Dict[str, dict] = {
+        material_name: {"id": material_name, "label": material_name, "type": "Material"}
+    }
+    links: List[dict] = []
+
+    if not element_symbols:
+        return {"nodes": list(nodes.values()), "links": links}
+
+    try:
+        with neo4j_conn.get_session() as session:
+            rows = session.execute_read(_run_material_graph_query, element_symbols)
+    except Exception as e:
+        logger.error(f"Material graph query failed: {e}")
+        rows = []
+
+    # Only link elements Neo4j actually recognizes, so the graph reflects real chemistry data.
+    for symbol in element_symbols:
+        canonical = next((row["element"] for row in rows if row["element"].lower() == symbol.lower()), None)
+        node_symbol = canonical or symbol
+        if node_symbol not in nodes:
+            nodes[node_symbol] = {"id": node_symbol, "label": node_symbol, "type": "Element"}
+            links.append({"source": material_name, "target": node_symbol, "type": "CONTAINS"})
+
+    for row in rows:
+        if not row.get("rel_type") or not row.get("neighbor_name"):
+            continue
+        neighbor_labels = row.get("neighbor_labels") or []
+        neighbor_type = "DegradationMode" if "DegradationMode" in neighbor_labels else "Property"
+        neighbor_id = row["neighbor_name"]
+
+        if neighbor_id not in nodes:
+            nodes[neighbor_id] = {"id": neighbor_id, "label": neighbor_id, "type": neighbor_type}
+
+        link = {"source": row["element"], "target": neighbor_id, "type": row["rel_type"]}
+        if link not in links:
+            links.append(link)
+
+    return {"nodes": list(nodes.values()), "links": links}
 
 
 def _run_cypher_search(tx, entities: List[str]):
