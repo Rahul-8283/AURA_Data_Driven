@@ -208,55 +208,149 @@ AURA_Data_Driven/
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Python 3.10+** (backend)
+- **Python 3.12** (backend)
 - **Node.js 18+** (frontend)
-- **Docker** (Redis)
-- **Environment variables** (see `.env.example` files)
+- **Redis** running locally on port 6379
+- **Neo4j** running locally on port 7687
+- **Environment variables** configured (see `.env.example` files)
 
-### Backend Setup
+---
+
+### Step 1 — Start Redis
+
+Redis must be running before starting the Celery worker or the API.
 
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# macOS (Homebrew)
+brew services start redis
 
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env with your API keys and database URLs
+# Linux (systemd)
+sudo systemctl start redis
 
-# Start Redis
-docker compose up -d redis
-
-# Run migrations (Neo4j constraints)
-python -m app.db.neo4j_setup
-
-# Seed ground-truth chemistry data
-python -m app.scripts.seed_neo4j
-
-# Start API server
-uvicorn main:app --reload --port 8000
-
-# In another terminal, start Celery worker
-celery -A app.core.celery_app worker --loglevel=info
+# Or run directly in a terminal
+redis-server
 ```
 
-### Frontend Setup
+Verify: `redis-cli ping` → should return `PONG`
+
+---
+
+### Step 2 — Start Neo4j
+
+Neo4j must be running before the API or worker can connect to the knowledge graph.
 
 ```bash
-cd frontend
-npm install
-cp .env.example .env
-# Edit .env with backend URL and Supabase keys
+# macOS (Homebrew)
+brew services start neo4j
 
-npm run dev          # Start dev server (http://localhost:5173)
+# Or start with Neo4j Desktop / your installed Neo4j binary
+neo4j start
+```
+
+Verify: open `http://localhost:7474` in a browser (default user: `neo4j`).
+
+---
+
+### Step 3 — Backend Setup
+
+Open a terminal and run from the project root:
+
+```bash
+cd AURA_Data_Driven/backend
+
+# Create and activate a virtual environment
+python3.12 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Copy and fill in environment variables
+cp .env.example .env
+# Open .env and fill in: Supabase keys, Neo4j password, OpenRouter/HF/Gemini API keys
+```
+
+**One-time database setup (run once after first install):**
+
+```bash
+# Set up Neo4j constraints
+python -m app.db.neo4j_setup
+
+# Seed ground-truth chemistry knowledge graph
+python -m app.scripts.seed_neo4j
+```
+
+---
+
+### Step 4 — Start the FastAPI Server
+
+In `backend/` with the venv active:
+
+```bash
+uvicorn main:app --reload --port 8000
+```
+
+API is available at `http://localhost:8000`  
+Interactive docs: `http://localhost:8000/docs`
+
+---
+
+### Step 5 — Start the Celery Worker
+
+Open a **second terminal** in `backend/` with the venv active:
+
+```bash
+celery -A app.core.celery_app.celery_app worker --loglevel=info
+```
+
+The worker picks up long-running discovery tasks queued by the API.
+
+---
+
+### Step 6 — Frontend Setup
+
+Open a **third terminal**:
+
+```bash
+cd AURA_Data_Driven/frontend
+
+npm install
+
+# Copy and fill in environment variables
+cp .env.example .env
+# Set VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_API_DEV_URL=http://localhost:8000
+
+npm run dev          # Dev server at http://localhost:5173
 npm run build        # Production build
 npm run lint         # TypeScript + ESLint checks
 ```
 
+---
+
 ### Verify Setup
-- **API Health:** `curl http://localhost:8000/health`
-- **DB Health:** `curl http://localhost:8000/health/db`
-- **Test Celery:** `curl -X POST http://localhost:8000/test-celery?iterations=3`
+
+```bash
+# API alive
+curl http://localhost:8000/health
+
+# Database connectivity (Supabase, Neo4j, ChromaDB)
+curl http://localhost:8000/health/db
+
+# Test Celery task round-trip
+curl -X POST "http://localhost:8000/test-celery?iterations=3"
+```
+
+---
+
+### Running Order Summary
+
+| Terminal | Command | Notes |
+|----------|---------|-------|
+| 1 | `redis-server` | Must start first |
+| 2 | `neo4j start` | Must start before API |
+| 3 | `uvicorn main:app --reload --port 8000` | Run from `backend/` |
+| 4 | `celery -A app.core.celery_app.celery_app worker --loglevel=info` | Run from `backend/` |
+| 5 | `npm run dev` | Run from `frontend/` |
 
 ---
 
