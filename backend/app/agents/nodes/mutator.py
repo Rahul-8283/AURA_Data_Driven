@@ -6,6 +6,7 @@ import uuid
 from typing import Dict
 
 from app.agents.state import ResearchState
+from app.core.config import settings
 from app.services.ga.material import BatteryMaterial
 from app.services.ga.operators import doping, substitution, crossover
 from app.services.ga.population import tournament_selection
@@ -15,7 +16,7 @@ from app.services.retrieval.graph_rag import GraphRAGService
 
 logger = logging.getLogger(__name__)
 
-TARGET_POPULATION = 20
+TARGET_POPULATION = settings.GA_POPULATION_SIZE
 ELITE_COUNT = 2
 VALIDATION_POOL_FACTOR = 2
 MAX_VALIDATION_ROUNDS = 2

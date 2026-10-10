@@ -94,8 +94,6 @@ SEED_FORMULAS = [
     "LiNi0.5Mn0.5O2",             # Co-free
     "LiNi0.8Mn0.1Al0.1O2",        # Co-free
 ]
-POPULATION_SIZE = 10
-
 def build_seed_population(excluded_elements: list) -> list:
     """Seed the GA with baseline layered oxides that contain no excluded element."""
     excluded = {e.strip().capitalize() for e in excluded_elements}
@@ -105,7 +103,7 @@ def build_seed_population(excluded_elements: list) -> list:
     ] or ["LiNi0.5Mn0.5O2"]
     return [
         {"id": f"seed_{i}", "composition": allowed[i % len(allowed)], "fitness": 0.0}
-        for i in range(POPULATION_SIZE)
+        for i in range(settings.GA_SEED_POPULATION)
     ]
 
 def planner_node(state: ResearchState) -> ResearchState:
@@ -145,7 +143,7 @@ def planner_node(state: ResearchState) -> ResearchState:
     
     # Initialize GA Variables
     state["current_generation"] = 0
-    state["max_generations"] = 20
+    state["max_generations"] = settings.GA_GENERATIONS
     
     state["current_population"] = build_seed_population(state["excluded_elements"])
 
