@@ -202,12 +202,15 @@ def _run_cypher_search(tx, entities: List[str]):
     return [record["p"] for record in result]
 
 
-async def get_graph_context(query: str) -> str:
+async def get_graph_context(query: str, entities: List[str] | None = None) -> str:
     """
     Orchestrates the entity extraction and Neo4j path traversal.
-    Formats the paths into human-readable sentences.
+    Formats the paths into human-readable sentences. Callers that already know
+    the entities (e.g. the GA nodes, from a composition's elements) pass them
+    in to skip the LLM extraction call.
     """
-    entities = await extract_entities(query)
+    if entities is None:
+        entities = await extract_entities(query)
     
     if not entities:
         return "No chemical entities identified for structural search."

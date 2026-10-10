@@ -6,6 +6,7 @@ from app.agents.state import ResearchState
 from app.services.retrieval.graph_rag import GraphRAGService
 from app.services.llm.client import predict_properties_async
 from app.services.ga.fitness import calculate_fitness
+from app.services.ga.material import BatteryMaterial
 
 async def predictor_node(state: ResearchState) -> ResearchState:
     """
@@ -23,7 +24,8 @@ async def predictor_node(state: ResearchState) -> ResearchState:
         # 1. Fetch Context Concurrently via GraphRAG
         query = f"What are the electrochemical properties and degradation modes of {composition}?"
         try:
-            context = await GraphRAGService.retrieve_context(query)
+            elements = list(BatteryMaterial.parse_string_to_dict(composition).keys())
+            context = await GraphRAGService.retrieve_context(query, entities=elements)
             
             # 2. Run LLM Predictions Concurrently
             prediction = await predict_properties_async(composition, context)

@@ -61,7 +61,8 @@ async def mutator_node(state: ResearchState) -> ResearchState:
         # Phase 7 GraphRAG Validation Filter
         query = f"Is {composition_str} a structurally stable battery material, or does it violate fundamental valence rules? Check the structural rules provided."
         try:
-            context = await GraphRAGService.retrieve_context(query)
+            elements = list(BatteryMaterial.parse_string_to_dict(composition_str).keys())
+            context = await GraphRAGService.retrieve_context(query, entities=elements)
             is_valid = await validate_material_async(composition_str, context)
         except Exception as e:
             # On error, we assume valid to not block evolution forever

@@ -71,12 +71,13 @@ def reformat_with_llm(query: str, combined_context: str) -> str:
 
 class GraphRAGService:
     @staticmethod
-    async def retrieve_context(query: str, summarize: bool = False) -> str:
+    async def retrieve_context(query: str, summarize: bool = False, entities: list[str] | None = None) -> str:
         """
         Orchestrates the GraphRAG pipeline by concurrently fetching semantic
         evidence from ChromaDB and structural rules from Neo4j, then processes
         the fused, section-demarcated context. With summarize=True the context is
-        rewritten by an LLM into prose (used by the chat endpoint only).
+        rewritten by an LLM into prose (used by the chat endpoint only). Passing
+        entities skips the LLM entity extraction.
         """
         started = time.perf_counter()
         # Ensure ChromaDB collection is loaded. 
@@ -87,7 +88,7 @@ class GraphRAGService:
             collection = None
         
         # Fire both I/O bound database queries simultaneously
-        graph_task = get_graph_context(query)
+        graph_task = get_graph_context(query, entities)
         
         if collection:
             vector_task = get_vector_context(collection, query, n_results=5)
