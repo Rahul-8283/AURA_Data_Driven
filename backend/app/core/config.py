@@ -25,7 +25,12 @@ class Settings(BaseSettings):
 
     # Redis/Celery
     REDIS_URL: str
-    
+
+    # Genetic algorithm sizing (lower these for quick test runs)
+    GA_GENERATIONS: int = 20
+    GA_SEED_POPULATION: int = 10
+    GA_POPULATION_SIZE: int = 20
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

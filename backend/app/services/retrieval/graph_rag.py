@@ -26,43 +26,42 @@ Guidelines:
 def reformat_with_llm(query: str, combined_context: str) -> str:
     prompt = RAG_FORMATTING_PROMPT.format(query=query, combined_context=combined_context)
     
-    # Try OpenRouter Free Models
+    # OpenRouter's Free Models Router auto-selects a live free model per
+    # request, avoiding hardcoded ":free" slugs that 404 once OpenRouter
+    # rotates its free-tier catalog.
     if settings.OPENROUTER_API_KEY:
-        free_models = [
-            "inclusionai/ling-3.0-flash-sante:free",
-            "dots-studio/dots-3-note-preview:free",
-            "liquid/lfm-2.5-2.6b:free",
-        ]
-        for model_name in free_models:
-            try:
-                response = requests.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": model_name,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0.2
-                    },
-                    timeout=15
-                )
-                response.raise_for_status()
-                content = response.json()["choices"][0]["message"]["content"].strip()
-                if content:
-                    return content
-            except Exception as e:
-                logger.warning(f"OpenRouter model {model_name} formatting failed: {e}. Trying next...")
-            
+        try:
+            response = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "openrouter/free",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.2
+                },
+                timeout=15
+            )
+            response.raise_for_status()
+            content = response.json()["choices"][0]["message"]["content"].strip()
+            if content:
+                return content
+        except Exception as e:
+            logger.warning(f"OpenRouter free router formatting failed: {e}")
+
+
     # Try Gemini fallback
     if settings.gemini_api_key:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}]
             }
-            response = requests.post(url, json=payload, timeout=15)
+            response = requests.post(
+                url, json=payload, headers={"x-goog-api-key": settings.gemini_api_key}, timeout=15
+            )
             response.raise_for_status()
             data = response.json()
             return data["candidates"][0]["content"]["parts"][0]["text"].strip()
@@ -74,12 +73,13 @@ def reformat_with_llm(query: str, combined_context: str) -> str:
 
 class GraphRAGService:
     @staticmethod
-    async def retrieve_context(query: str, summarize: bool = False) -> str:
+    async def retrieve_context(query: str, summarize: bool = False, entities: list[str] | None = None) -> str:
         """
         Orchestrates the GraphRAG pipeline by concurrently fetching semantic
         evidence from ChromaDB and structural rules from Neo4j, then processes
         the fused, section-demarcated context. With summarize=True the context is
-        rewritten by an LLM into prose (used by the chat endpoint only).
+        rewritten by an LLM into prose (used by the chat endpoint only). Passing
+        entities skips the LLM entity extraction.
         """
         started = time.perf_counter()
         # Ensure ChromaDB collection is loaded. 
@@ -90,7 +90,7 @@ class GraphRAGService:
             collection = None
         
         # Fire both I/O bound database queries simultaneously
-        graph_task = get_graph_context(query)
+        graph_task = get_graph_context(query, entities)
         
         if collection:
             vector_task = get_vector_context(collection, query, n_results=5)

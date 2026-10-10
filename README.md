@@ -4,6 +4,12 @@
   <em>AI-powered discovery of novel battery materials through intelligent multi-agent evolution, knowledge graphs, and LLM-based property prediction.</em>
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/status-Phases%200–8%20complete-2e7d32?style=for-the-badge" alt="Status" />
+  <img src="https://img.shields.io/badge/backend%20tests-15%2F15%20passing-2e7d32?style=for-the-badge" alt="Backend tests" />
+  <img src="https://img.shields.io/badge/frontend-lint%20%26%20build%20clean-2e7d32?style=for-the-badge" alt="Frontend build" />
+</p>
+
 ---
 
 ## 📋 Overview
@@ -14,6 +20,7 @@ AURA is a domain-specific research assistant for accelerating battery material d
 - **GraphRAG** for chemistry validation against literature and structural rules
 - **LLM-based Property Prediction** for electrochemical property estimation
 - **Multi-Agent Orchestration (LangGraph)** for seamless workflow coordination
+- **Automated Reporting** with an LLM-written executive summary, interactive charts, an explorable knowledge graph, and one-click PDF export
 
 **Key insight:** Evolution is guided by chemistry, not chance. Every mutated candidate respects valence rules, stoichiometry constraints, and real synthesis feasibility before being evaluated.
 
@@ -27,6 +34,11 @@ AURA is a domain-specific research assistant for accelerating battery material d
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="TailwindCSS" />
   <img src="https://img.shields.io/badge/Zustand-000000?style=for-the-badge" alt="Zustand" />
+  <img src="https://img.shields.io/badge/React_Router-CA4245?style=for-the-badge&logo=react-router&logoColor=white" alt="React Router" />
+  <img src="https://img.shields.io/badge/Recharts-8884d8?style=for-the-badge" alt="Recharts" />
+  <img src="https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white" alt="Framer Motion" />
+  <img src="https://img.shields.io/badge/Lenis-111111?style=for-the-badge" alt="Lenis" />
+  <br/>
   <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/LangGraph-FF4F00?style=for-the-badge&logo=langchain&logoColor=white" alt="LangGraph" />
@@ -37,19 +49,29 @@ AURA is a domain-specific research assistant for accelerating battery material d
   <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
   <img src="https://img.shields.io/badge/OpenRouter-000000?style=for-the-badge&logo=openai&logoColor=white" alt="OpenRouter" />
-  <img src="https://img.shields.io/badge/Hugging_Face-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black" alt="Hugging Face" />
+  <img src="https://img.shields.io/badge/Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white" alt="Gemini" />
+  <img src="https://img.shields.io/badge/Pytest-0A9EDC?style=for-the-badge&logo=pytest&logoColor=white" alt="Pytest" />
 </p>
 
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
-| **Frontend** | React 19, Vite, TypeScript, TailwindCSS v4, Zustand | Modern interactive UI with state management |
-| **Backend** | FastAPI, Python 3.12 | REST API and orchestration |
-| **Async Tasks** | Celery + Redis | Long-running discovery tasks with progress tracking |
-| **AI Orchestration** | LangGraph | Multi-agent workflow for discovery pipeline |
-| **Auth & Data** | Supabase (PostgreSQL, Auth) | User management and task history |
-| **Knowledge Graph** | Neo4j | Structural chemistry rules and relationships |
-| **Vector DB** | ChromaDB (local persistent) | Battery literature embeddings |
-| **LLM & Embeddings** | OpenRouter, Hugging Face (`all-MiniLM-L6-v2`) | Property prediction and semantic search |
+| **Frontend Framework** | React 19, Vite 8, TypeScript (strict), TailwindCSS v4 | SPA shell, build tooling, and utility-first styling |
+| **Frontend State** | Zustand, React Context, React Hook Form, Zod | Research task state, auth state, form validation |
+| **Frontend Routing** | React Router v7 | Landing/auth/dashboard/results routes, protected routes |
+| **Data Visualization** | Recharts (radar + line charts), `react-force-graph-2d` | Fitness evolution charts, interactive chemistry knowledge graph |
+| **UI Motion & Feel** | Framer Motion, Lenis, Lucide React, `@hello-pangea/dnd` | Scroll-triggered/stagger animations, smooth scroll, icons, drag-and-drop |
+| **Reporting Export** | `jspdf`, `html2canvas` | Client-side "Download Full Report" PDF export |
+| **Backend Framework** | FastAPI, Python 3.12, Pydantic v2, Uvicorn | REST API, request/response validation, ASGI server |
+| **AI Orchestration** | LangGraph | Multi-agent (planner → mutator → predictor → reporter) workflow graph |
+| **Async Tasks** | Celery + Redis | Long-running discovery tasks with progress polling |
+| **Auth & Relational Data** | Supabase (PostgreSQL + Auth, `supabase-py`) | JWT auth, `ResearchTasks`, `SavedMaterials`, `chat_messages` |
+| **Knowledge Graph** | Neo4j (`neo4j` driver) | Structural chemistry rules, elements/materials/properties/degradation modes |
+| **Vector Store** | ChromaDB (local persistent) | Battery literature + material property embeddings |
+| **Embeddings** | ChromaDB `DefaultEmbeddingFunction` (local ONNX `all-MiniLM-L6-v2`) | Fully offline semantic embeddings — no external embedding API call |
+| **LLM Providers** | OpenRouter (free-tier models) → Gemini 2.5 Flash fallback | Entity extraction, property prediction, executive summaries |
+| **Document Ingestion** | PyMuPDF, `langchain-text-splitters` | PDF parsing and chunking for the literature corpus |
+| **Resilience** | `tenacity` (retry + exponential backoff) | LLM and GraphRAG call resilience |
+| **Testing** | Pytest, `pytest-asyncio`, ESLint, `tsc` | Backend unit tests; frontend type-checking and linting |
 
 ---
 
@@ -59,23 +81,25 @@ AURA is a domain-specific research assistant for accelerating battery material d
 graph TD
     User["👤 User Input<br/>(Battery Requirements)"]
     Planner["🧠 Planner Agent<br/>(Parse Targets & Constraints)"]
-    
+
     subgraph Knowledge["🗂️ Battery Knowledge Graph"]
         Neo4j["Neo4j<br/>(Structural Rules)"]
         Chroma["ChromaDB<br/>(Literature)"]
     end
-    
+
     GraphRAG["⚙️ GraphRAG<br/>(Fused Retrieval)"]
-    
+
     subgraph Evolution["🔄 Generative Evolution (20 Gens)"]
         Mutator["🧬 Mutator<br/>(GA Operators)"]
         Validator["🔍 Validator<br/>(Chemistry Rules)"]
         Predictor["🧠 Predictor<br/>(LLM Props)"]
         Fitness["📊 Fitness Score<br/>(Multi-Objective)"]
     end
-    
-    Results["📑 Top 5 Candidates<br/>(Ranked)"]
-    
+
+    Reporter["📝 Reporter Agent<br/>(LLM Executive Summary)"]
+    Storage["🗄️ Supabase<br/>(ResearchTasks + SavedMaterials)"]
+    Results["📑 Results Dashboard<br/>(Cards · Charts · Graph · PDF)"]
+
     User --> Planner
     Planner --> Knowledge
     Knowledge --> GraphRAG
@@ -85,37 +109,108 @@ graph TD
     GraphRAG --> Predictor
     Predictor --> Fitness
     Fitness --> Mutator
-    Fitness --> Results
+    Fitness --> Reporter
+    Reporter --> Storage
+    Reporter --> Results
 ```
 
 ### Component Architecture
 
 ```mermaid
 graph LR
-    FE["Frontend<br/>(React)"]
+    FE["Frontend<br/>(React + Vite)"]
     API["FastAPI<br/>(Port 8000)"]
     Health["Health<br/>Endpoints"]
     RAG["RAG<br/>Endpoint"]
     Research["Research<br/>Endpoint"]
-    Celery["Celery Worker<br/>(Redis)"]
-    Supabase["Supabase<br/>(PostgreSQL)"]
+    Graph["Graph<br/>Endpoint"]
+    Celery["Celery Worker<br/>(Redis broker/backend)"]
+    Supabase["Supabase<br/>(PostgreSQL + Auth)"]
     Neo4j["Neo4j<br/>(Graph)"]
     Chroma["ChromaDB<br/>(Vectors)"]
-    LLM["OpenRouter<br/>(LLM)"]
-    HF["Hugging Face<br/>(Embeddings)"]
-    
+    LLM["OpenRouter<br/>+ Gemini fallback"]
+
     FE -->|JWT| API
     API --> Health
     API --> RAG
     API --> Research
+    API --> Graph
     Research --> Celery
     Celery --> Neo4j
     Celery --> Chroma
     Celery --> LLM
-    LLM --> HF
+    Celery --> Supabase
     API --> Supabase
     RAG --> Neo4j
     RAG --> Chroma
+    Graph --> Neo4j
+    FE -->|react-force-graph-2d| Graph
+```
+
+### End-to-End Request Lifecycle
+
+```mermaid
+sequenceDiagram
+    actor U as Researcher
+    participant FE as React Frontend
+    participant API as FastAPI
+    participant Q as Celery Worker
+    participant LG as LangGraph Pipeline
+    participant DB as Supabase
+
+    U->>FE: Describe target material in chat
+    FE->>API: POST /api/v1/research/start (JWT)
+    API->>DB: INSERT ResearchTasks (status=processing)
+    API->>Q: apply_async(run_discovery_loop)
+    API-->>FE: 202 { task_id }
+    loop Every 3s
+        FE->>API: GET /api/v1/research/status/{task_id}
+        API-->>FE: { status, generation, best_score }
+    end
+    Q->>LG: astream(planner → mutator ↔ predictor × 20 → reporter)
+    LG->>DB: UPDATE ResearchTasks (status=completed, result_json)
+    LG->>DB: INSERT SavedMaterials (top 5)
+    Q-->>API: task result (SUCCESS)
+    API-->>FE: { status: "Complete", results, executive_summary }
+    FE->>FE: navigate(/results/:taskId)
+    FE->>API: GET /api/v1/graph/material/{composition}
+    API-->>FE: { nodes, links }
+    FE-->>U: Executive summary, radar/evolution charts,<br/>knowledge graph, PDF export
+```
+
+---
+
+## 🧬 Multi-Agent Pipeline (LangGraph)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Planner
+    Planner --> Mutator: seed population
+    Mutator --> Predictor: mutated generation
+    Predictor --> Mutator: generation < 20 (continue_evolution)
+    Predictor --> Reporter: generation == 20 (generate_report)
+    Reporter --> [*]
+
+    note right of Planner
+      Extracts target_properties,
+      base_material_class,
+      excluded_elements via LLM
+    end note
+
+    note right of Mutator
+      GA operators: doping, substitution,
+      crossover + GraphRAG validation
+    end note
+
+    note right of Predictor
+      Concurrent GraphRAG context fetch
+      + LLM property prediction + fitness scoring
+    end note
+
+    note right of Reporter
+      LLM executive summary +
+      Supabase persistence
+    end note
 ```
 
 ---
@@ -126,52 +221,65 @@ graph LR
 AURA_Data_Driven/
 ├── backend/                          # FastAPI + LangGraph engine
 │   ├── app/
-│   │   ├── core/                    # Config, auth, Celery setup
+│   │   ├── core/                    # Config, JWT auth, Celery app setup
 │   │   ├── db/                      # Supabase, Neo4j, ChromaDB clients
-│   │   ├── api/v1/                  # REST endpoints
+│   │   ├── api/v1/
 │   │   │   ├── endpoints/
 │   │   │   │   ├── health.py       # DB health checks
-│   │   │   │   ├── research.py     # Discovery task API
-│   │   │   │   └── rag.py          # GraphRAG query endpoint
+│   │   │   │   ├── research.py     # Discovery task start/status API
+│   │   │   │   ├── rag.py          # GraphRAG query endpoint
+│   │   │   │   └── graph.py        # Material knowledge-graph endpoint
 │   │   │   └── router.py
 │   │   ├── agents/                  # LangGraph multi-agent pipeline
 │   │   │   ├── state.py            # ResearchState schema
-│   │   │   ├── workflow.py         # Graph wiring
+│   │   │   ├── workflow.py         # Graph wiring (planner→mutator↔predictor→reporter)
 │   │   │   └── nodes/
-│   │   │       ├── planner.py      # Parse user requirements
+│   │   │       ├── planner.py      # Parse user requirements, seed population
 │   │   │       ├── mutator.py      # Genetic Algorithm evolution
-│   │   │       └── predictor.py    # LLM property prediction
+│   │   │       ├── predictor.py    # LLM property prediction + fitness
+│   │   │       └── reporter.py     # Executive summary + Supabase persistence
 │   │   ├── services/                # Business logic
 │   │   │   ├── ga/                 # Genetic algorithm
-│   │   │   │   ├── material.py     # Material stoichiometry
+│   │   │   │   ├── material.py     # Material stoichiometry parser/validator
 │   │   │   │   ├── operators.py    # Doping, substitution, crossover
 │   │   │   │   ├── population.py   # Tournament selection
-│   │   │   │   └── fitness.py      # Multi-objective scoring
-│   │   │   ├── ingestion/          # Document processing
-│   │   │   ├── retrieval/          # GraphRAG + vector search
-│   │   │   ├── graph/              # Neo4j ingestion
-│   │   │   ├── llm/                # OpenRouter client
-│   │   │   └── embeddings.py       # Hugging Face embeddings
-│   │   ├── models/                  # Pydantic schemas
-│   │   └── scripts/                 # Setup & testing scripts
+│   │   │   │   └── fitness.py      # Multi-objective scoring + penalties
+│   │   │   ├── ingestion/          # PDF parsing, chunking, upsert into ChromaDB
+│   │   │   ├── retrieval/          # Vector search, graph search, GraphRAG fusion
+│   │   │   ├── graph/               # Neo4j triplet extraction + ingestion
+│   │   │   ├── llm/                # OpenRouter + Gemini client (predict/validate/summarize)
+│   │   │   └── embeddings.py       # Local ONNX embedding function
+│   │   ├── models/                  # Pydantic schemas (graph triplets, etc.)
+│   │   └── scripts/                 # Setup, seeding, and manual test scripts
 │   ├── worker/
-│   │   └── tasks.py                # Celery task definitions
-│   ├── tests/                       # pytest suite
-│   ├── main.py                      # FastAPI app entry
+│   │   └── tasks.py                # Celery task definitions (run_discovery_loop)
+│   ├── tests/                       # pytest suite (15 tests)
+│   ├── supabase/
+│   │   └── schema.sql               # Reference DDL for ResearchTasks/SavedMaterials/chat_messages
+│   ├── main.py                      # FastAPI app entry + lifespan + CORS
 │   ├── requirements.txt
 │   ├── .env.example
-│   └── docker-compose.yml           # Redis for local dev
+│   └── docker-compose.yml           # Optional containerized Redis for local dev
 │
 ├── frontend/                         # React + Vite UI
 │   ├── src/
-│   │   ├── pages/                  # Route pages
-│   │   ├── components/             # Reusable UI components
-│   │   ├── contexts/               # Auth context
-│   │   ├── store/                  # Zustand research state
+│   │   ├── pages/                  # LandingPage, Login, Signup, Dashboard, Results, Settings
+│   │   ├── components/
+│   │   │   ├── landing/            # Hero, Features, HowItWorks, CallToAction
+│   │   │   ├── dashboard/          # ChatInterface (discovery launcher + live progress)
+│   │   │   ├── results/            # MaterialCard, EvolutionChart, MaterialGraph
+│   │   │   └── shared/             # AuraMark, ProtectedRoute
+│   │   ├── contexts/                # AuthContext / useAuth (Supabase session)
+│   │   ├── hooks/
+│   │   │   └── useDiscoveryTask.ts # Starts + polls a discovery task, redirects on completion
+│   │   ├── store/                  # Zustand research task state
+│   │   ├── types/                  # Shared research/graph TypeScript types
 │   │   ├── lib/
-│   │   │   ├── api.ts             # Axios + JWT interceptor
-│   │   │   └── supabase.ts        # Supabase client
-│   │   ├── App.tsx
+│   │   │   ├── api.ts             # Axios instance + JWT interceptor
+│   │   │   ├── supabase.ts        # Supabase client (nullable in local preview)
+│   │   │   ├── baseline.ts        # NMC811 baseline constants for radar charts
+│   │   │   └── exportReportPdf.ts # html2canvas + jsPDF report export
+│   │   ├── App.tsx                 # Route table
 │   │   └── main.tsx
 │   ├── package.json
 │   ├── tsconfig.json
@@ -180,7 +288,7 @@ AURA_Data_Driven/
 │   └── .env.example
 │
 ├── data/
-│   └── seed_graph.json             # Ground-truth chemistry facts
+│   └── seed_graph.json             # Ground-truth chemistry facts (175 triplets)
 │
 ├── docs/
 │   ├── PRD.md                      # Product requirements
@@ -199,8 +307,7 @@ AURA_Data_Driven/
 │   └── phase_8.md                  # Results & reporting
 │
 ├── CLAUDE.md                        # Developer guide & conventions
-├── README.md                        # This file
-└── LICENSE
+└── README.md                        # This file
 ```
 
 ---
@@ -208,55 +315,162 @@ AURA_Data_Driven/
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Python 3.10+** (backend)
+- **Python 3.12** (backend)
 - **Node.js 18+** (frontend)
-- **Docker** (Redis)
-- **Environment variables** (see `.env.example` files)
+- **Redis** running locally on port 6379
+- **Neo4j** running locally on port 7687
+- **Environment variables** configured (see `.env.example` files)
 
-### Backend Setup
+---
+
+### Step 1 — Start Redis
+
+Redis must be running before starting the Celery worker or the API.
 
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# macOS (Homebrew)
+brew services start redis
 
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env with your API keys and database URLs
+# Linux (systemd)
+sudo systemctl start redis
 
-# Start Redis
-docker compose up -d redis
-
-# Run migrations (Neo4j constraints)
-python -m app.db.neo4j_setup
-
-# Seed ground-truth chemistry data
-python -m app.scripts.seed_neo4j
-
-# Start API server
-uvicorn main:app --reload --port 8000
-
-# In another terminal, start Celery worker
-celery -A app.core.celery_app worker --loglevel=info
+# Or run directly in a terminal
+redis-server
 ```
 
-### Frontend Setup
+Verify: `redis-cli ping` → should return `PONG`
+
+---
+
+### Step 2 — Start Neo4j
+
+Neo4j must be running before the API or worker can connect to the knowledge graph.
 
 ```bash
-cd frontend
-npm install
-cp .env.example .env
-# Edit .env with backend URL and Supabase keys
+# macOS (Homebrew)
+brew services start neo4j
 
-npm run dev          # Start dev server (http://localhost:5173)
+# Or start with Neo4j Desktop / your installed Neo4j binary
+neo4j start
+```
+
+Verify: open `http://localhost:7474` in a browser (default user: `neo4j`).
+
+---
+
+### Step 3 — Backend Setup
+
+Open a terminal and run from the project root:
+
+```bash
+cd AURA_Data_Driven/backend
+
+# Create and activate a virtual environment
+python3.12 -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Copy and fill in environment variables
+cp .env.example .env
+# Open .env and fill in: Supabase keys, Neo4j password, OpenRouter/Gemini API keys
+```
+
+**One-time database setup (run once after first install):**
+
+```bash
+# Create the Supabase tables (ResearchTasks, SavedMaterials, chat_messages)
+# — run backend/supabase/schema.sql once in the Supabase SQL editor
+
+# Set up Neo4j constraints
+python -m app.db.neo4j_setup
+
+# Seed ground-truth chemistry knowledge graph
+python -m app.scripts.seed_neo4j
+```
+
+---
+
+### Step 4 — Start the FastAPI Server
+
+In `backend/` with the venv active:
+
+```bash
+uvicorn main:app --reload --port 8000
+```
+
+API is available at `http://localhost:8000`
+Interactive docs: `http://localhost:8000/docs`
+
+---
+
+### Step 5 — Start the Celery Worker
+
+Open a **second terminal** in `backend/` with the venv active:
+
+```bash
+celery -A app.core.celery_app.celery_app worker --loglevel=info
+```
+
+The worker picks up long-running discovery tasks queued by the API.
+
+---
+
+### Step 6 — Frontend Setup
+
+Open a **third terminal**:
+
+```bash
+cd AURA_Data_Driven/frontend
+
+npm install
+
+# Copy and fill in environment variables
+cp .env.example .env
+# Set VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_API_DEV_URL=http://localhost:8000
+
+npm run dev          # Dev server at http://localhost:5173
 npm run build        # Production build
 npm run lint         # TypeScript + ESLint checks
 ```
 
+---
+
 ### Verify Setup
-- **API Health:** `curl http://localhost:8000/health`
-- **DB Health:** `curl http://localhost:8000/health/db`
-- **Test Celery:** `curl -X POST http://localhost:8000/test-celery?iterations=3`
+
+```bash
+# API alive
+curl http://localhost:8000/health
+
+# Database connectivity (Supabase, Neo4j, ChromaDB)
+curl http://localhost:8000/health/db
+
+# Test Celery task round-trip
+curl -X POST "http://localhost:8000/test-celery?iterations=3"
+```
+
+---
+
+### Running Order Summary
+
+| Terminal | Command | Notes |
+|----------|---------|-------|
+| 1 | `redis-server` | Must start first |
+| 2 | `neo4j start` | Must start before API |
+| 3 | `uvicorn main:app --reload --port 8000` | Run from `backend/` |
+| 4 | `celery -A app.core.celery_app.celery_app worker --loglevel=info` | Run from `backend/` |
+| 5 | `npm run dev` | Run from `frontend/` |
+
+```mermaid
+flowchart LR
+    T1["Terminal 1<br/>redis-server"] --> T3
+    T2["Terminal 2<br/>neo4j start"] --> T3
+    T3["Terminal 3<br/>uvicorn main:app"] --> T4
+    T3 --> T5
+    T4["Terminal 4<br/>celery worker"]
+    T5["Terminal 5<br/>npm run dev"]
+```
 
 ---
 
@@ -270,9 +484,11 @@ npm run lint         # TypeScript + ESLint checks
 | `GET` | `/task/{task_id}` | Poll Celery task status |
 | **Research API** |
 | `POST` | `/api/v1/research/start` | Initiate discovery task (requires JWT) |
-| `GET` | `/api/v1/research/status/{task_id}` | Poll task progress |
+| `GET` | `/api/v1/research/status/{task_id}` | Poll task progress / fetch final report |
 | **RAG API** |
 | `POST` | `/api/v1/rag/query` | Query GraphRAG for battery chemistry context |
+| **Graph API** |
+| `GET` | `/api/v1/graph/material/{material_name}` | `{nodes, links}` chemistry graph for a given formula |
 
 ### Example: Discover a Cathode
 
@@ -290,9 +506,14 @@ curl http://localhost:8000/api/v1/research/status/abc-123
 
 # Response: { "status": "Completed Generation 5...", "generation": 5, "best_score": 450.2 }
 
-# 3. Retrieve results
+# 3. Retrieve the final report (same endpoint once complete)
 curl http://localhost:8000/api/v1/research/status/abc-123
-# When state == "Complete", the response includes "results": [...]
+# When status == "Complete", the response includes:
+# "results": [...], "executive_summary": "...", "generation_history": [...]
+
+# 4. Explore the chemistry graph behind a top candidate
+curl "http://localhost:8000/api/v1/graph/material/LiNi0.5Mn0.5O2"
+# Response: { "nodes": [...], "links": [...] }
 ```
 
 ---
@@ -300,34 +521,85 @@ curl http://localhost:8000/api/v1/research/status/abc-123
 ## 🗄 Database Schemas
 
 ### Supabase (PostgreSQL)
-- **Users:** Managed by Supabase Auth
-- **ResearchTasks:** `(id, user_id, prompt, status, created_at, result_json)`
-- **SavedMaterials:** `(id, user_id, composition, predicted_capacity, cost, reasoning)`
-- **ChatMessages:** `(id, user_id, role, content, created_at)`
+
+```mermaid
+erDiagram
+    USERS ||--o{ RESEARCH_TASKS : creates
+    USERS ||--o{ SAVED_MATERIALS : owns
+    USERS ||--o{ CHAT_MESSAGES : sends
+    RESEARCH_TASKS ||--o{ SAVED_MATERIALS : produces
+
+    USERS {
+        uuid id PK
+        string email
+    }
+    RESEARCH_TASKS {
+        uuid id PK
+        uuid user_id FK
+        text prompt
+        text status
+        jsonb result_json
+        timestamptz created_at
+    }
+    SAVED_MATERIALS {
+        uuid id PK
+        uuid task_id FK
+        uuid user_id FK
+        text composition
+        float predicted_capacity
+        float predicted_cost
+        text reasoning
+        timestamptz created_at
+    }
+    CHAT_MESSAGES {
+        uuid id PK
+        uuid user_id FK
+        text role
+        text content
+        timestamptz created_at
+    }
+```
+
+- **Users:** managed by Supabase Auth
+- **ResearchTasks:** created when a discovery task starts (`status=processing`), updated to `completed` with the full `result_json` (top candidates, executive summary, generation history) by the Reporter node
+- **SavedMaterials:** one row per top-5 candidate, written by the Reporter node for the user's dashboard history
+- **ChatMessages:** persisted chat turns used by the discovery chat UI
+
+> Reference DDL lives in [`backend/supabase/schema.sql`](backend/supabase/schema.sql) — run it once against your Supabase project.
 
 ### Neo4j (Knowledge Graph)
 
-**Nodes:**
-- `Element`: Li, Ni, Co, Mn, Mg, Al, O, etc.
-- `Material`: LCO, NMC811, LFP, LMO, Graphite, etc.
-- `Property`: High Capacity, Low Cost, Thermal Stability, etc.
-- `DegradationMode`: Cation Mixing, Microcracking, Oxygen Release, etc.
+```mermaid
+graph LR
+    Material["Material<br/>(NMC811, LFP, Graphite...)"]
+    Element["Element<br/>(Li, Ni, Co, Mn, Al...)"]
+    Property["Property<br/>(High Capacity, Thermal Stability...)"]
+    Degradation["DegradationMode<br/>(Cation Mixing, Microcracking...)"]
+    Role["Role<br/>(Cathode, Anode, Electrolyte)"]
 
-**Edges:**
-- `(Material)-[:CONTAINS]->(Element)`
-- `(Material)-[:CAN_BE_DOPED_WITH]->(Element)`
-- `(Material)-[:SUFFERS_FROM]->(DegradationMode)`
-- `(Element)-[:MITIGATES]->(DegradationMode)`
-- `(Element)-[:INCREASES|DECREASES]->(Property)`
+    Material -->|CONTAINS| Element
+    Material -->|CAN_BE_DOPED_WITH| Element
+    Material -->|SUFFERS_FROM| Degradation
+    Material -->|HAS_ROLE| Role
+    Element -->|INCREASES / DECREASES| Property
+    Element -->|MITIGATES / REDUCES| Degradation
+    Degradation -->|PREVENTED_BY| Property
+```
+
+- **Nodes:** `Element`, `Material`, `Property`, `DegradationMode`, `Role`
+- **Edges:** `CONTAINS`, `CAN_BE_DOPED_WITH`, `SUFFERS_FROM`, `HAS_ROLE`, `INCREASES`, `DECREASES`, `MITIGATES`, `REDUCES`, `PREVENTED_BY`
+- Seeded from 175 ground-truth triplets in [`data/seed_graph.json`](data/seed_graph.json); extended at runtime by the literature-ingestion pipeline (`app/services/graph/extractor.py` + `ingestion.py`)
+- Queried directly by `GET /api/v1/graph/material/{name}` to render the frontend's interactive knowledge graph
 
 ### ChromaDB (Vector Store)
 - **Collections:**
-  - `battery_literature`: Chunked research paper embeddings (384-dim, `all-MiniLM-L6-v2`)
-  - `material_properties`: Property descriptions and synthesis data
+  - `battery_literature`: chunked research-paper embeddings (384-dim, local ONNX `all-MiniLM-L6-v2` via ChromaDB's `DefaultEmbeddingFunction` — no external embedding API call)
+  - `material_properties`: property descriptions and synthesis data
+- Persisted locally under `backend/chroma_data/` (configurable via `CHROMA_PERSIST_DIRECTORY`)
 
 ---
 
-## 🔄 Discovery Workflow (20 Generations)
+## 🔄 Discovery Workflow (20 Generations → Report)
 
 ```mermaid
 graph TD
@@ -335,18 +607,49 @@ graph TD
     Mutator["🧬 Mutator<br/>• Tournament select 2 parents<br/>• Apply GA operator<br/>• Validate stoichiometry"]
     Validator["🔍 Validator<br/>GraphRAG checks:<br/>• Chemical stability<br/>• Synthesis feasibility<br/>• Cost impact"]
     Predictor["🧠 Predictor<br/>• Fetch GraphRAG context<br/>• Call LLM for properties<br/>• Parse JSON output"]
-    Fitness["📊 Fitness Scoring<br/>• Score = (Cap×Vol×Cycles)/Cost<br/>• Apply constraint penalties<br/>• Update hall of fame"]
+    Fitness["📊 Fitness Scoring<br/>• Score = (Cap×Vol×Cycles)/Cost<br/>• Apply constraint penalties<br/>• Record generation history<br/>• Update hall of fame"]
     Check{{"Gen < 20?"}}
-    End["🏁 Final Results<br/>(Top 5 Candidates)"]
-    
+    Reporter["📝 Reporter<br/>• LLM executive summary<br/>• Persist to Supabase"]
+    End["🏁 Results Dashboard<br/>(Top 5 Candidates + Report)"]
+
     Start --> Mutator
     Mutator --> Validator
     Validator --> Predictor
     Predictor --> Fitness
     Fitness --> Check
     Check -->|Yes| Mutator
-    Check -->|No| End
+    Check -->|No| Reporter
+    Reporter --> End
 ```
+
+---
+
+## 📊 Results Dashboard
+
+Once a discovery task completes, the frontend redirects to `/results/:taskId`, which renders:
+
+```mermaid
+graph TD
+    Page["Results Page"]
+    Summary["Executive Summary<br/>(LLM-written, 3 paragraphs)"]
+    Evo["Evolution Chart<br/>(Recharts line chart: best vs. average score / generation)"]
+    Cards["Material Cards<br/>(Top 5, each with its own radar chart vs. NMC811 baseline)"]
+    KG["Knowledge Graph<br/>(react-force-graph-2d, material selector dropdown)"]
+    PDF["Download Full Report<br/>(html2canvas + jsPDF)"]
+
+    Page --> Summary
+    Page --> Evo
+    Page --> Cards
+    Page --> KG
+    Page --> PDF
+```
+
+- **Executive Summary** — written by the Reporter node, explaining the evolutionary path and trade-offs of the top candidates
+- **Evolution Chart** — plots `best_score` and `average_score` across all 20 generations, proving the GA improved over time
+- **Material Cards** — glassmorphic cards per top-5 candidate with a stat grid (capacity, voltage, cycle life, cost, fitness) and a mini radar chart benchmarked against standard NMC811
+- **Knowledge Graph** — interactive, draggable, zoomable force-directed graph of the selected material's elements, properties, and degradation modes (Gold = Material, Blue = Element, Green = Property, Red = Degradation Mode)
+- **PDF Export** — rasterizes the whole report (including charts) into a downloadable PDF via `html2canvas` + `jspdf`
+- All sections animate in with Framer Motion stagger effects, with Lenis smooth scrolling active page-wide
 
 ---
 
@@ -354,20 +657,28 @@ graph TD
 
 ```bash
 cd backend
-pytest                    # Run all tests
-pytest -v               # Verbose output
-pytest tests/test_ga_phase5.py -k "material"  # Specific test
+pytest                                          # Run all tests
+pytest -v                                       # Verbose output
+pytest tests/test_reporter_phase8.py -v         # Phase 8 reporter + graph endpoint tests
+pytest tests/test_ga_phase5.py -k "material"    # Specific test
 
 # Coverage
 pytest --cov=app --cov-report=html
 ```
 
-**Test coverage:**
+```bash
+cd frontend
+npm run lint     # ESLint (strict TypeScript, react-hooks rules)
+npm run build    # tsc -b && vite build (type-check + production bundle)
+```
+
+**Test coverage (15/15 passing):**
 - GA material parser and stoichiometry validation
 - GA operators (doping, substitution, crossover) and constraints
 - GraphRAG entity extraction and fallbacks
 - Fitness scoring and constraint penalties
-- LLM client retry logic and error handling
+- Reporter node: LLM summary generation, Supabase persistence, graceful LLM-failure fallback
+- Material knowledge-graph construction from Neo4j query results
 
 ---
 
@@ -392,8 +703,8 @@ The Genetic Algorithm enforces strict chemistry constraints:
    - Verified after every mutation
 
 5. **Elitism**
-   - Top 2 materials auto-carry to next generation unchanged
-   - Guarantees monotonic improvement
+   - Top candidates auto-carry to the hall of fame unchanged across generations
+   - Guarantees monotonic improvement in the best-score trend
 
 ---
 
@@ -413,6 +724,8 @@ REDIS_URL=redis://localhost:6379/0
 OPENROUTER_API_KEY=<key>
 GEMINI_API_KEY=<key>
 HF_API_key=<key>
+CHROMA_DATABASE=<chroma-database-name>
+CHROMA_PERSIST_DIRECTORY=./chroma_data
 ```
 
 **Frontend** (`.env`)
@@ -428,8 +741,9 @@ VITE_MODE=development
 - **Never** commit `.env` files
 - **Rotate** API keys regularly
 - **Use** environment-specific keys (dev vs. prod)
-- **Restrict** CORS to known frontend domains
-- **Validate** all user input server-side
+- **Restrict** CORS to known frontend origins — currently allow-listed to `http://localhost:5173` / `127.0.0.1:5173` in `backend/main.py`; add your production frontend origin before deploying
+- **Validate** all user input server-side (Pydantic schemas on every endpoint)
+- **Authenticate** every task-creating endpoint — `/api/v1/research/start` requires a valid Supabase JWT
 
 ---
 
@@ -445,12 +759,11 @@ VITE_MODE=development
 | 5 | GA operators (doping, substitution, crossover), constraints | ✅ Complete |
 | 6 | LLM prediction (OpenRouter + Gemini), async retries | ✅ Complete |
 | 7 | Evolution loop (20 gens), Celery tasks, fitness scoring | ✅ Complete |
-| 8 | Results reporting, PDF export, frontend dashboard | ❌ Not Started |
+| 8 | Reporter node, results dashboard, knowledge graph viz, PDF export | ✅ Complete |
 
 **Notes:**
-- Phase 0-7 fully implemented with fixes for async, GA constraints, API auth, and LLM resilience
-- Phase 8 (results page) requires frontend research form and results visualization
-- Backend tests: 9/9 passing
+- All 9 phases (0–8) are implemented end-to-end: chat → discovery task → 20-generation GA/LLM loop → LLM executive summary → Supabase persistence → results dashboard with charts, interactive knowledge graph, and PDF export
+- Backend tests: **15/15 passing**
 - Frontend lint/build: both passing without errors
 
 ---

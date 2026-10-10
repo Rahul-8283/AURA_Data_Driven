@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-from app.services.llm.client import predict_properties_async
+from app.services.llm.client import predict_properties_batch_async
 from app.services.retrieval.graph_rag import GraphRAGService
 
 async def main():
@@ -22,12 +22,12 @@ async def main():
         context = await GraphRAGService.retrieve_context(query)
         print("Context fetched successfully! Preview:")
         print(f"{context[:200]}...\n")
-        
-        print("[2/2] Running async prediction via OpenRouter (Free Tier)...")
-        prediction = await predict_properties_async(composition, context)
-        
+
+        print("[2/2] Running batched prediction via OpenRouter (Free Tier)...")
+        results = await predict_properties_batch_async([(composition, context)])
+
         print("\n[Success] Prediction successful! Result:")
-        print(prediction.model_dump_json(indent=2))
+        print(results[composition].model_dump_json(indent=2))
         
     except Exception as e:
         print(f"\n[Error] during testing: {e}")

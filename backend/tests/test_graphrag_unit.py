@@ -30,7 +30,7 @@ async def test_retrieve_context_fusion():
                 combined_context = await GraphRAGService.retrieve_context(query)
                 
                 # Assertions
-                mock_graph.assert_called_once_with(query)
+                mock_graph.assert_called_once_with(query, None)
                 mock_vector.assert_called_once_with("MockCollectionObject", query, n_results=5)
                 
                 # Verify the final template format

@@ -4,7 +4,7 @@ import os
 import re
 import asyncio
 import requests
-from typing import List
+from typing import Dict, List
 from app.core.config import settings
 from app.db.neo4j_client import neo4j_conn
 
@@ -67,43 +67,38 @@ Example Output:
 
 Query: {query}
 """
-    free_models = [
-        "inclusionai/ling-3.0-flash-sante:free",
-        "dots-studio/dots-3-note-preview:free",
-        "liquid/lfm-2.5-2.6b:free",
-    ]
+    # OpenRouter's Free Models Router auto-selects a live free model per
+    # request, avoiding hardcoded ":free" slugs that 404 once OpenRouter
+    # rotates its free-tier catalog.
+    payload = {
+        "model": "openrouter/free",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.1
+    }
     raw_text = None
-    last_err = None
-
-    for model_name in free_models:
-        payload = {
-            "model": model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.1
-        }
-        try:
-            resp = await asyncio.to_thread(requests.post, url, headers=headers, json=payload, timeout=15)
-            resp.raise_for_status()
-            data = resp.json()
-            raw_text = data["choices"][0]["message"]["content"]
-            if raw_text:
-                break
-        except Exception as e:
-            last_err = e
-            logger.warning(f"OpenRouter model {model_name} failed: {e}. Trying next...")
+    try:
+        resp = await asyncio.to_thread(requests.post, url, headers=headers, json=payload, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        raw_text = data["choices"][0]["message"]["content"]
+    except Exception as e:
+        logger.warning(f"OpenRouter free router failed: {e}")
 
     if not raw_text:
-        logger.warning(f"All OpenRouter models failed ({last_err}). Falling back to Gemini.")
+        logger.warning("Falling back to Gemini.")
         if not settings.gemini_api_key:
             logger.error("Gemini API key not set for fallback.")
             return fallback_entities(query)
             
-        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
+        gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
         gemini_payload = {
             "contents": [{"parts": [{"text": prompt}]}]
         }
         try:
-            g_resp = await asyncio.to_thread(requests.post, gemini_url, json=gemini_payload, timeout=15)
+            g_resp = await asyncio.to_thread(
+                requests.post, gemini_url, json=gemini_payload,
+                headers={"x-goog-api-key": settings.gemini_api_key}, timeout=15,
+            )
             g_resp.raise_for_status()
             g_data = g_resp.json()
             raw_text = g_data["candidates"][0]["content"]["parts"][0]["text"]
@@ -130,6 +125,71 @@ Query: {query}
         return []
 
 
+def _run_material_graph_query(tx, symbols: List[str]):
+    """
+    Fetches each matched element and its 1-hop neighbors (Property, DegradationMode),
+    used to render the interactive knowledge graph for a specific material.
+    """
+    query = """
+    MATCH (e:Element)
+    WHERE toLower(e.symbol) IN $symbols
+    OPTIONAL MATCH (e)-[r]-(n)
+    WHERE n:Property OR n:DegradationMode
+    RETURN e.symbol AS element, type(r) AS rel_type, labels(n) AS neighbor_labels,
+           coalesce(n.name, n.symbol) AS neighbor_name
+    """
+    result = tx.run(query, symbols=[s.lower() for s in symbols])
+    return [dict(record) for record in result]
+
+
+def get_material_graph(material_name: str, element_symbols: List[str]) -> dict:
+    """
+    Builds a { nodes: [], links: [] } payload for react-force-graph-2d.
+    The material itself is a synthetic root node (not required to exist in Neo4j)
+    linked via CONTAINS to every constituent element parsed from its formula.
+    Elements that Neo4j recognizes are additionally expanded one hop to their
+    known properties and degradation modes.
+    """
+    nodes: Dict[str, dict] = {
+        material_name: {"id": material_name, "label": material_name, "type": "Material"}
+    }
+    links: List[dict] = []
+
+    if not element_symbols:
+        return {"nodes": list(nodes.values()), "links": links}
+
+    try:
+        with neo4j_conn.get_session() as session:
+            rows = session.execute_read(_run_material_graph_query, element_symbols)
+    except Exception as e:
+        logger.error(f"Material graph query failed: {e}")
+        rows = []
+
+    # Only link elements Neo4j actually recognizes, so the graph reflects real chemistry data.
+    for symbol in element_symbols:
+        canonical = next((row["element"] for row in rows if row["element"].lower() == symbol.lower()), None)
+        node_symbol = canonical or symbol
+        if node_symbol not in nodes:
+            nodes[node_symbol] = {"id": node_symbol, "label": node_symbol, "type": "Element"}
+            links.append({"source": material_name, "target": node_symbol, "type": "CONTAINS"})
+
+    for row in rows:
+        if not row.get("rel_type") or not row.get("neighbor_name"):
+            continue
+        neighbor_labels = row.get("neighbor_labels") or []
+        neighbor_type = "DegradationMode" if "DegradationMode" in neighbor_labels else "Property"
+        neighbor_id = row["neighbor_name"]
+
+        if neighbor_id not in nodes:
+            nodes[neighbor_id] = {"id": neighbor_id, "label": neighbor_id, "type": neighbor_type}
+
+        link = {"source": row["element"], "target": neighbor_id, "type": row["rel_type"]}
+        if link not in links:
+            links.append(link)
+
+    return {"nodes": list(nodes.values()), "links": links}
+
+
 def _run_cypher_search(tx, entities: List[str]):
     # Matches paths up to 2 hops involving the extracted entities
     # Accounts for the fact that Elements use 'symbol' while Materials use 'name'
@@ -145,12 +205,15 @@ def _run_cypher_search(tx, entities: List[str]):
     return [record["p"] for record in result]
 
 
-async def get_graph_context(query: str) -> str:
+async def get_graph_context(query: str, entities: List[str] | None = None) -> str:
     """
     Orchestrates the entity extraction and Neo4j path traversal.
-    Formats the paths into human-readable sentences.
+    Formats the paths into human-readable sentences. Callers that already know
+    the entities (e.g. the GA nodes, from a composition's elements) pass them
+    in to skip the LLM extraction call.
     """
-    entities = await extract_entities(query)
+    if entities is None:
+        entities = await extract_entities(query)
     
     if not entities:
         return "No chemical entities identified for structural search."

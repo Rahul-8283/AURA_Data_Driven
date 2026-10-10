@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, AlertCircle, Trash2 } from 'lucide-react';
+import { Send, AlertCircle, Trash2, Loader2 } from 'lucide-react';
 import axios from 'axios';
-import api from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/useAuth';
+import { useDiscoveryTask } from '../../hooks/useDiscoveryTask';
+import { useResearchStore } from '../../store/useResearchStore';
 
 type Message = {
   id: string;
@@ -13,11 +14,13 @@ type Message = {
 
 export default function ChatInterface() {
   const { user } = useAuth();
+  const { startDiscovery } = useDiscoveryTask();
+  const { taskStatus, progress, bestScore } = useResearchStore();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: 'Welcome to the AURA discovery space. How can I assist you with your battery-material research today?',
+      content: 'Welcome to the AURA discovery space. Describe the battery material you want to discover (e.g. "Find a cobalt-free cathode with >280 mAh/g capacity and <50 $/kg cost") and I will run a 20-generation evolutionary search for you.',
     },
   ]);
   const [input, setInput] = useState('');
@@ -85,15 +88,14 @@ export default function ChatInterface() {
         }]);
       }
 
-      // Direct call to live backend RAG query endpoint
-      const response = await api.post('/api/v1/rag/query', {
-        prompt: userMessage.content,
-      });
+      // Kick off the full GA discovery pipeline; useDiscoveryTask polls status
+      // and redirects to /results/:taskId once the backend reports completion.
+      await startDiscovery(userMessage.content);
 
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: response.data.context || 'Empty context returned.',
+        content: 'Discovery task launched. Running the genetic algorithm across 20 generations — this page will redirect to your results automatically once it finishes.',
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -171,6 +173,13 @@ export default function ChatInterface() {
                 <span className="chat-thinking__dot" />
               </div>
             </div>
+          </div>
+        )}
+
+        {taskStatus === 'processing' && (
+          <div className="flex items-center gap-2 text-[#bdc58e] text-xs px-3 py-2 bg-[#8f9b68]/10 border border-[#8f9b68]/20 rounded-lg max-w-[85%] self-center">
+            <Loader2 size={14} className="animate-spin" />
+            <span>Evolving candidates — generation {progress}/20 · best score {bestScore.toFixed(2)}</span>
           </div>
         )}
 

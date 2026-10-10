@@ -6,10 +6,22 @@ import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from app.db.chroma_client import init_literature_collection
+from app.db.supabase import supabase_client
 from app.services.graph.extractor import extract_triplets_from_text
 from app.services.graph.ingestion import ingest_triplets
+from app.services.llm.errors import LLMUnavailableError
 
 logger = logging.getLogger(__name__)
+
+def mark_task_failed(task_id: str, error: Exception) -> None:
+    message = str(error) if isinstance(error, LLMUnavailableError) else f"Discovery run failed ({type(error).__name__})."
+    try:
+        supabase_client.table("ResearchTasks").update({
+            "status": "failed",
+            "result_json": {"error": message},
+        }).eq("id", task_id).execute()
+    except Exception as e:
+        logger.error(f"Could not mark task {task_id} as failed: {e}")
 
 @celery_app.task(bind=True, name="test_dummy_task")
 def test_dummy_task(self, iterations: int):
@@ -77,8 +89,8 @@ def process_chroma_chunks_task(self):
 
 
 @celery_app.task(bind=True, name="run_discovery_loop")
-def run_discovery_loop(self, user_prompt: str, task_id: str):
-    initial_state = init_research_state(task_id, user_prompt)
+def run_discovery_loop(self, user_prompt: str, task_id: str, user_id: str = "default_user"):
+    initial_state = init_research_state(task_id, user_prompt, user_id)
 
     async def _run():
         last_state = initial_state
@@ -102,9 +114,15 @@ def run_discovery_loop(self, user_prompt: str, task_id: str):
                     )
         return last_state
 
-    last_state = asyncio.run(_run())
+    try:
+        last_state = asyncio.run(_run())
+    except Exception as e:
+        mark_task_failed(task_id, e)
+        raise
     return {
         "status": "success",
         "generation": last_state.get("current_generation", 0),
         "results": last_state.get("best_candidates", []),
+        "executive_summary": last_state.get("final_summary", ""),
+        "generation_history": last_state.get("generation_history", []),
     }

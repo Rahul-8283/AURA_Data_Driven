@@ -72,7 +72,7 @@ def test_substitution_operator_excluded_elements(mock_choice):
     assert subbed.serialize_to_string() == nmc.serialize_to_string()
 
 @pytest.mark.asyncio
-@patch("app.agents.nodes.mutator.validate_material_async", new_callable=AsyncMock, return_value=True)
+@patch("app.agents.nodes.mutator.validate_materials_batch_async", new_callable=AsyncMock, side_effect=lambda items: {c: True for c, _ in items})
 @patch("app.agents.nodes.mutator.GraphRAGService.retrieve_context", new_callable=AsyncMock, return_value="ctx")
 async def test_node_execution_and_diversity(_ctx, _validate):
     """

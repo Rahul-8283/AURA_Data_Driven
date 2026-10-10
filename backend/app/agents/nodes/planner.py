@@ -5,6 +5,7 @@ from datetime import datetime
 from app.agents.state import ResearchState
 from app.core.config import settings
 from app.services.ga.material import BatteryMaterial
+from app.services.llm.errors import LLMQuotaExceeded, is_daily_quota_error
 
 logger = logging.getLogger(__name__)
 
@@ -39,52 +40,43 @@ def parse_llm_json(response_text: str) -> dict:
     return json.loads(cleaned.strip())
 
 def call_openrouter(prompt: str) -> dict:
-    """Attempt to call OpenRouter using free models."""
+    """Call OpenRouter via its Free Models Router, which auto-selects a live
+    free model per request instead of a hardcoded slug that can 404 once
+    OpenRouter rotates its free-tier catalog."""
     api_key = settings.OPENROUTER_API_KEY or getattr(settings, "openrouter_api_key", None)
     if not api_key:
         raise ValueError("OpenRouter API key missing")
-        
-    free_models = [
-        "inclusionai/ling-3.0-flash-sante:free",
-        "dots-studio/dots-3-note-preview:free",
-        "liquid/lfm-2.5-2.6b:free",
-    ]
-    last_err = None
-    for model_name in free_models:
-        try:
-            response = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model_name,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.1
-                },
-                timeout=15
-            )
-            response.raise_for_status()
-            content = response.json()["choices"][0]["message"]["content"]
-            return parse_llm_json(content)
-        except Exception as e:
-            last_err = e
-            logger.warning(f"Planner OpenRouter model {model_name} failed: {e}. Trying next...")
-            
-    raise ValueError(f"All OpenRouter free models failed: {last_err}")
+
+    response = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "openrouter/free",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1
+        },
+        timeout=15
+    )
+    if response.status_code == 429 and is_daily_quota_error(response.text):
+        raise LLMQuotaExceeded("OpenRouter free-model daily quota exhausted.")
+    response.raise_for_status()
+    content = response.json()["choices"][0]["message"]["content"]
+    return parse_llm_json(content)
 
 def call_gemini_fallback(prompt: str) -> dict:
     """Fallback to Gemini 2.5 Flash."""
     if not settings.gemini_api_key:
         raise ValueError("Gemini API key missing")
         
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
     }
     
-    response = requests.post(url, json=payload, timeout=15)
+    response = requests.post(url, json=payload, headers={"x-goog-api-key": settings.gemini_api_key}, timeout=15)
     response.raise_for_status()
     
     data = response.json()
@@ -102,8 +94,6 @@ SEED_FORMULAS = [
     "LiNi0.5Mn0.5O2",             # Co-free
     "LiNi0.8Mn0.1Al0.1O2",        # Co-free
 ]
-POPULATION_SIZE = 10
-
 def build_seed_population(excluded_elements: list) -> list:
     """Seed the GA with baseline layered oxides that contain no excluded element."""
     excluded = {e.strip().capitalize() for e in excluded_elements}
@@ -113,7 +103,7 @@ def build_seed_population(excluded_elements: list) -> list:
     ] or ["LiNi0.5Mn0.5O2"]
     return [
         {"id": f"seed_{i}", "composition": allowed[i % len(allowed)], "fitness": 0.0}
-        for i in range(POPULATION_SIZE)
+        for i in range(settings.GA_SEED_POPULATION)
     ]
 
 def planner_node(state: ResearchState) -> ResearchState:
@@ -134,6 +124,11 @@ def planner_node(state: ResearchState) -> ResearchState:
             state["logs"].append(f"[{datetime.utcnow().isoformat()}] Planner successfully extracted constraints using Gemini Fallback.")
         except Exception as gemini_err:
             logger.error(f"Gemini Fallback failed: {gemini_err}")
+            if isinstance(e, LLMQuotaExceeded):
+                raise LLMQuotaExceeded(
+                    "OpenRouter's free-model daily quota is used up and the Gemini fallback also failed. "
+                    "Wait for the daily reset at 00:00 UTC or add OpenRouter credits."
+                ) from None
             state["logs"].append(f"[{datetime.utcnow().isoformat()}] ERROR: All LLM parsers failed. Proceeding with empty constraints.")
             parsed_data = {
                 "target_properties": {},
@@ -148,7 +143,7 @@ def planner_node(state: ResearchState) -> ResearchState:
     
     # Initialize GA Variables
     state["current_generation"] = 0
-    state["max_generations"] = 20
+    state["max_generations"] = settings.GA_GENERATIONS
     
     state["current_population"] = build_seed_population(state["excluded_elements"])
 

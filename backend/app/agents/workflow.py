@@ -5,7 +5,7 @@ from app.agents.state import ResearchState
 from app.agents.nodes.planner import planner_node
 from app.agents.nodes.mutator import mutator_node
 from app.agents.nodes.predictor import predictor_node
-from app.agents.nodes.dummy_nodes import dummy_reporter_node
+from app.agents.nodes.reporter import reporter_node
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ workflow = StateGraph(ResearchState)
 workflow.add_node("planner", planner_node)
 workflow.add_node("mutator", mutator_node)
 workflow.add_node("predictor", predictor_node)
-workflow.add_node("reporter", dummy_reporter_node)
+workflow.add_node("reporter", reporter_node)
 
 # Define the basic linear edges
 workflow.set_entry_point("planner")

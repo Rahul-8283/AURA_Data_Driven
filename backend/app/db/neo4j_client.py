@@ -5,7 +5,12 @@ class Neo4jConnection:
     def __init__(self):
         self.driver = GraphDatabase.driver(
             settings.NEO4J_URI,
-            auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD)
+            auth=(settings.NEO4J_USERNAME, settings.NEO4J_PASSWORD),
+            # Proactively recycle pooled connections before Neo4j Aura's
+            # server-side idle timeout drops them, which otherwise surfaces
+            # as "Failed to read from defunct connection" on the next query
+            # (recovered automatically by the driver's retry, but avoidable).
+            max_connection_lifetime=300,
         )
 
     def close(self):
