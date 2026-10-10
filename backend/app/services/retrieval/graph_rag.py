@@ -55,11 +55,13 @@ def reformat_with_llm(query: str, combined_context: str) -> str:
     # Try Gemini fallback
     if settings.gemini_api_key:
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
+            url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}]
             }
-            response = requests.post(url, json=payload, timeout=15)
+            response = requests.post(
+                url, json=payload, headers={"x-goog-api-key": settings.gemini_api_key}, timeout=15
+            )
             response.raise_for_status()
             data = response.json()
             return data["candidates"][0]["content"]["parts"][0]["text"].strip()

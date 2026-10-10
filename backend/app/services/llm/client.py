@@ -38,6 +38,9 @@ RETRY_UNLESS_QUOTA = retry(
     reraise=True,
 )
 
+def _gemini_headers() -> dict:
+    return {"x-goog-api-key": settings.gemini_api_key}
+
 async def _generate_text(system: str, prompt: str, temperature: float, json_mode: bool = False) -> str:
     """OpenRouter's Free Models Router first (model="openrouter/free" auto-selects a
     live free model, avoiding hardcoded slugs that 404 once OpenRouter rotates its
@@ -63,7 +66,7 @@ async def _generate_text(system: str, prompt: str, temperature: float, json_mode
         print(f"OpenRouter free-router call failed: {e}")
 
     print("OpenRouter free router failed. Falling back to Gemini 2.5 Flash...")
-    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
+    gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     payload = {
         "systemInstruction": {"parts": [{"text": system}]},
         "contents": [{"parts": [{"text": prompt}]}],
@@ -71,7 +74,9 @@ async def _generate_text(system: str, prompt: str, temperature: float, json_mode
     if json_mode:
         payload["generationConfig"] = {"responseMimeType": "application/json"}
     try:
-        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload, timeout=30)
+        g_resp = await asyncio.to_thread(
+            requests.post, gemini_url, json=payload, headers=_gemini_headers(), timeout=30
+        )
         g_resp.raise_for_status()
         return g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as gemini_error:

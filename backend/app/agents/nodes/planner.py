@@ -71,12 +71,12 @@ def call_gemini_fallback(prompt: str) -> dict:
     if not settings.gemini_api_key:
         raise ValueError("Gemini API key missing")
         
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
     }
     
-    response = requests.post(url, json=payload, timeout=15)
+    response = requests.post(url, json=payload, headers={"x-goog-api-key": settings.gemini_api_key}, timeout=15)
     response.raise_for_status()
     
     data = response.json()

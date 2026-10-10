@@ -90,12 +90,15 @@ Query: {query}
             logger.error("Gemini API key not set for fallback.")
             return fallback_entities(query)
             
-        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
+        gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
         gemini_payload = {
             "contents": [{"parts": [{"text": prompt}]}]
         }
         try:
-            g_resp = await asyncio.to_thread(requests.post, gemini_url, json=gemini_payload, timeout=15)
+            g_resp = await asyncio.to_thread(
+                requests.post, gemini_url, json=gemini_payload,
+                headers={"x-goog-api-key": settings.gemini_api_key}, timeout=15,
+            )
             g_resp.raise_for_status()
             g_data = g_resp.json()
             raw_text = g_data["candidates"][0]["content"]["parts"][0]["text"]
