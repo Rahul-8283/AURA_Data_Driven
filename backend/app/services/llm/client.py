@@ -1,4 +1,6 @@
+import asyncio
 import json
+import requests
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential
@@ -24,6 +26,8 @@ Estimate the specific capacity (mAh/g), nominal voltage (V), cycle life, and cos
 You MUST base your prediction primarily on the provided GraphRAG literature context. If the context states that Al doping reduces capacity but increases thermal stability, your numerical predictions MUST reflect a drop in capacity and a rise in cycle life compared to standard baselines.
 """
 
+MAX_BATCH_CONTEXT_CHARS = 1000
+
 async def call_openrouter_free(messages: list[dict], temperature: float) -> str | None:
     """Single call to OpenRouter's Free Models Router (model="openrouter/free"),
     which auto-selects a live free model per request instead of a hardcoded
@@ -44,6 +48,29 @@ async def call_openrouter_free(messages: list[dict], temperature: float) -> str 
     except Exception as e:
         print(f"OpenRouter free-router call failed: {e}")
         return None
+
+async def _generate_text(system: str, prompt: str, temperature: float, json_mode: bool = False) -> str:
+    content = await call_openrouter_free(
+        [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=temperature,
+    )
+    if content:
+        return content
+
+    print("OpenRouter free router failed. Falling back to Gemini 2.5 Flash...")
+    gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
+    payload = {
+        "systemInstruction": {"parts": [{"text": system}]},
+        "contents": [{"parts": [{"text": prompt}]}],
+    }
+    if json_mode:
+        payload["generationConfig"] = {"responseMimeType": "application/json"}
+    g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload, timeout=30)
+    g_resp.raise_for_status()
+    return g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
 
 def clean_json_string(raw: str) -> str:
     cleaned = raw.strip()
@@ -69,59 +96,47 @@ def normalize_prediction_dict(data: dict) -> dict:
         normalized["cost_estimate_usd_kg"] = float(cost)
     else:
         normalized["cost_estimate_usd_kg"] = 25.0
-        
+
     normalized["reasoning"] = str(
         data.get("reasoning") or data.get("cost_impact") or data.get("explanation") or "Predicted based on material composition and literature context."
     )
     return normalized
 
+def _truncate_context(context: str) -> str:
+    if len(context) <= MAX_BATCH_CONTEXT_CHARS:
+        return context
+    return context[:MAX_BATCH_CONTEXT_CHARS] + " [...]"
+
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-async def predict_properties_async(material_composition: str, context: str) -> PredictionResult:
-    prompt = f"""Material Composition: {material_composition}
-
-Context:
-{context}
-
-Return ONLY a valid JSON object matching this schema exactly:
-{{
-  "specific_capacity": 200.0,
-  "voltage": 3.8,
-  "cycle_life": 1000,
-  "cost_estimate_usd_kg": 25.0,
-  "reasoning": "Chemical rationale for these numbers based on context."
-}}
-"""
-    
-    content = await call_openrouter_free(
-        [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.1,
+async def predict_properties_batch_async(items: list[tuple[str, str]]) -> dict[str, PredictionResult]:
+    """One LLM call predicting properties for many (composition, context) pairs.
+    Results are keyed by the composition string; the model answers by index so
+    it cannot drop or rename a material. Indexes it omits are simply absent."""
+    blocks = "\n\n".join(
+        f"### Material index {i}\nComposition: {composition}\nContext:\n{_truncate_context(context)}"
+        for i, (composition, context) in enumerate(items)
     )
+    prompt = f"""{blocks}
 
-    # Fallback to Gemini if OpenRouter's free router failed
-    if not content:
-        print("OpenRouter free router failed. Falling back to Gemini 2.5 Flash...")
-        import requests
-        import asyncio
-        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
-        payload = {
-            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"responseMimeType": "application/json"}
-        }
-        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload, timeout=30)
-        g_resp.raise_for_status()
-        content = g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+Predict the properties of EVERY material above. Return ONLY a valid JSON array with one object per material:
+[
+  {{"index": 0, "specific_capacity": 200.0, "voltage": 3.8, "cycle_life": 1000, "cost_estimate_usd_kg": 25.0, "reasoning": "Chemical rationale based on context."}}
+]
+"""
+    content = await _generate_text(SYSTEM_PROMPT, prompt, temperature=0.1, json_mode=True)
 
     try:
-        cleaned = clean_json_string(content)
-        data = json.loads(cleaned)
-        normalized = normalize_prediction_dict(data)
-        return PredictionResult(**normalized)
+        parsed = json.loads(clean_json_string(content))
+        results: dict[str, PredictionResult] = {}
+        for item in parsed:
+            index = int(item["index"])
+            if not 0 <= index < len(items):
+                continue
+            composition = items[index][0]
+            results[composition] = PredictionResult(**normalize_prediction_dict(item))
+        return results
     except Exception as e:
-        raise ValueError(f"Failed to parse LLM response: {content}, Error: {e}")
+        raise ValueError(f"Failed to parse LLM batch response: {content}, Error: {e}")
 
 SUMMARY_SYSTEM_PROMPT = """You are writing the executive summary for a battery material discovery report.
 Review the user's initial request and the top 5 materials the AI discovered.
@@ -145,26 +160,7 @@ Top 5 discovered materials:
 
 Write the 3-paragraph executive summary now."""
 
-    content = await call_openrouter_free(
-        [
-            {"role": "system", "content": SUMMARY_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.3,
-    )
-
-    if not content:
-        print("OpenRouter free router failed. Falling back to Gemini 2.5 Flash...")
-        import requests
-        import asyncio
-        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
-        payload = {
-            "systemInstruction": {"parts": [{"text": SUMMARY_SYSTEM_PROMPT}]},
-            "contents": [{"parts": [{"text": prompt}]}],
-        }
-        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload, timeout=30)
-        g_resp.raise_for_status()
-        content = g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+    content = await _generate_text(SUMMARY_SYSTEM_PROMPT, prompt, temperature=0.3)
 
     if not content:
         raise ValueError("No executive summary content returned from any LLM provider.")
@@ -184,26 +180,12 @@ Return ONLY a valid JSON object:
   "is_valid": true
 }}
 """
-    content = await call_openrouter_free(
-        [
-            {"role": "system", "content": "You are an expert computational battery chemist. Return strictly JSON."},
-            {"role": "user", "content": prompt}
-        ],
+    content = await _generate_text(
+        "You are an expert computational battery chemist. Return strictly JSON.",
+        prompt,
         temperature=0.0,
+        json_mode=True,
     )
-
-    if not content:
-        import requests
-        import asyncio
-        gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
-        payload = {
-            "systemInstruction": {"parts": [{"text": "You are an expert computational battery chemist. Return strictly JSON."}]},
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"responseMimeType": "application/json"}
-        }
-        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload, timeout=30)
-        g_resp.raise_for_status()
-        content = g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
 
     try:
         cleaned = clean_json_string(content)
