@@ -10,6 +10,7 @@ from app.services.ga.material import BatteryMaterial
 from app.services.ga.operators import doping, substitution, crossover
 from app.services.ga.population import tournament_selection
 from app.services.llm.client import validate_materials_batch_async
+from app.services.llm.errors import LLMQuotaExceeded
 from app.services.retrieval.graph_rag import GraphRAGService
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,8 @@ async def _validate_pool(pool: list[str]) -> Dict[str, bool]:
             contexts = await asyncio.gather(*contexts)
             verdicts = await validate_materials_batch_async(list(zip(uncached, contexts)))
             VERDICT_CACHE.update(verdicts)
+        except LLMQuotaExceeded:
+            raise
         except Exception as e:
             # On error, assume valid so a flaky LLM cannot stall evolution
             logger.warning(f"Batch validation failed, accepting pool unverified: {e}")

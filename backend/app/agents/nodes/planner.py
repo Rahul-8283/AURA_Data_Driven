@@ -5,6 +5,7 @@ from datetime import datetime
 from app.agents.state import ResearchState
 from app.core.config import settings
 from app.services.ga.material import BatteryMaterial
+from app.services.llm.errors import LLMQuotaExceeded, is_daily_quota_error
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,8 @@ def call_openrouter(prompt: str) -> dict:
         },
         timeout=15
     )
+    if response.status_code == 429 and is_daily_quota_error(response.text):
+        raise LLMQuotaExceeded("OpenRouter free-model daily quota exhausted.")
     response.raise_for_status()
     content = response.json()["choices"][0]["message"]["content"]
     return parse_llm_json(content)
@@ -123,6 +126,11 @@ def planner_node(state: ResearchState) -> ResearchState:
             state["logs"].append(f"[{datetime.utcnow().isoformat()}] Planner successfully extracted constraints using Gemini Fallback.")
         except Exception as gemini_err:
             logger.error(f"Gemini Fallback failed: {gemini_err}")
+            if isinstance(e, LLMQuotaExceeded):
+                raise LLMQuotaExceeded(
+                    "OpenRouter's free-model daily quota is used up and the Gemini fallback also failed. "
+                    "Wait for the daily reset at 00:00 UTC or add OpenRouter credits."
+                ) from None
             state["logs"].append(f"[{datetime.utcnow().isoformat()}] ERROR: All LLM parsers failed. Proceeding with empty constraints.")
             parsed_data = {
                 "target_properties": {},

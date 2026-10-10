@@ -3,15 +3,18 @@ import json
 import requests
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_not_exception_type, stop_after_attempt, wait_exponential
 
 from app.core.config import settings
+from app.services.llm.errors import LLMQuotaExceeded, LLMUnavailableError, is_daily_quota_error
 
 def get_client() -> AsyncOpenAI:
     # Built per call: each Celery task runs its own event loop, so a shared client would hold a closed loop.
+    # Retries are handled by tenacity, which knows about the daily quota; the SDK would retry blindly.
     return AsyncOpenAI(
         base_url="https://openrouter.ai/api/v1",
         api_key=settings.OPENROUTER_API_KEY or "missing-key",
+        max_retries=0,
     )
 
 class PredictionResult(BaseModel):
@@ -28,37 +31,36 @@ You MUST base your prediction primarily on the provided GraphRAG literature cont
 
 MAX_BATCH_CONTEXT_CHARS = 1000
 
-async def call_openrouter_free(messages: list[dict], temperature: float) -> str | None:
-    """Single call to OpenRouter's Free Models Router (model="openrouter/free"),
-    which auto-selects a live free model per request instead of a hardcoded
-    slug that 404s once OpenRouter rotates its free-tier catalog.
+RETRY_UNLESS_QUOTA = retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_not_exception_type(LLMQuotaExceeded),
+    reraise=True,
+)
 
-    Uses `async with` so the underlying httpx client is always closed instead
-    of being garbage-collected later on a possibly-closed event loop (which
-    surfaced as 'AsyncHttpxClientWrapper' object has no attribute '_state').
-    """
+async def _generate_text(system: str, prompt: str, temperature: float, json_mode: bool = False) -> str:
+    """OpenRouter's Free Models Router first (model="openrouter/free" auto-selects a
+    live free model, avoiding hardcoded slugs that 404 once OpenRouter rotates its
+    catalog), then Gemini. Raises if neither answers."""
+    openrouter_error: Exception | None = None
     try:
+        # `async with` closes the httpx client deterministically instead of leaving it
+        # to garbage collection on a possibly-closed event loop.
         async with get_client() as client:
             response = await client.chat.completions.create(
                 model="openrouter/free",
-                messages=messages,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
                 temperature=temperature,
             )
-            return response.choices[0].message.content
+        content = response.choices[0].message.content
+        if content:
+            return content
     except Exception as e:
+        openrouter_error = e
         print(f"OpenRouter free-router call failed: {e}")
-        return None
-
-async def _generate_text(system: str, prompt: str, temperature: float, json_mode: bool = False) -> str:
-    content = await call_openrouter_free(
-        [
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=temperature,
-    )
-    if content:
-        return content
 
     print("OpenRouter free router failed. Falling back to Gemini 2.5 Flash...")
     gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={settings.gemini_api_key}"
@@ -68,9 +70,19 @@ async def _generate_text(system: str, prompt: str, temperature: float, json_mode
     }
     if json_mode:
         payload["generationConfig"] = {"responseMimeType": "application/json"}
-    g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload, timeout=30)
-    g_resp.raise_for_status()
-    return g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+    try:
+        g_resp = await asyncio.to_thread(requests.post, gemini_url, json=payload, timeout=30)
+        g_resp.raise_for_status()
+        return g_resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as gemini_error:
+        # Gemini's error text embeds the request URL, which carries the API key, so report only the status.
+        status = getattr(getattr(gemini_error, "response", None), "status_code", "no response")
+        if openrouter_error is not None and is_daily_quota_error(openrouter_error):
+            raise LLMQuotaExceeded(
+                "OpenRouter's free-model daily quota is used up and the Gemini fallback also failed "
+                f"(HTTP {status}). Wait for the daily reset at 00:00 UTC or add OpenRouter credits."
+            ) from None
+        raise LLMUnavailableError(f"All LLM providers failed (Gemini HTTP {status}).") from None
 
 def clean_json_string(raw: str) -> str:
     cleaned = raw.strip()
@@ -107,7 +119,7 @@ def _truncate_context(context: str) -> str:
         return context
     return context[:MAX_BATCH_CONTEXT_CHARS] + " [...]"
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+@RETRY_UNLESS_QUOTA
 async def predict_properties_batch_async(items: list[tuple[str, str]]) -> dict[str, PredictionResult]:
     """One LLM call predicting properties for many (composition, context) pairs.
     Results are keyed by the composition string; the model answers by index so
@@ -144,7 +156,7 @@ Write a highly professional, 3-paragraph summary explaining the evolutionary pat
 materials outcompete standard baselines, and what their primary trade-offs are based on their predicted properties.
 Write plain prose only, no markdown headers or bullet points."""
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+@RETRY_UNLESS_QUOTA
 async def summarize_report_async(user_prompt: str, top_candidates: list[dict]) -> str:
     candidates_text = "\n".join(
         f"- {c.get('composition')}: capacity={c.get('specific_capacity')} mAh/g, "
@@ -167,7 +179,7 @@ Write the 3-paragraph executive summary now."""
 
     return content.strip()
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+@RETRY_UNLESS_QUOTA
 async def validate_materials_batch_async(items: list[tuple[str, str]]) -> dict[str, bool]:
     """Batched chemical validity check. Returns composition -> is_valid. Indexes the
     model omits or cannot parse are absent; the caller treats them as valid so an
