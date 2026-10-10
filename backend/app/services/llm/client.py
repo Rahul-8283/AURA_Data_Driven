@@ -168,17 +168,21 @@ Write the 3-paragraph executive summary now."""
     return content.strip()
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-async def validate_material_async(material_composition: str, context: str) -> bool:
-    prompt = f"""Material Composition: {material_composition}
+async def validate_materials_batch_async(items: list[tuple[str, str]]) -> dict[str, bool]:
+    """Batched chemical validity check. Returns composition -> is_valid. Indexes the
+    model omits or cannot parse are absent; the caller treats them as valid so an
+    unparseable answer never blocks the GA."""
+    blocks = "\n\n".join(
+        f"### Candidate index {i}\nComposition: {composition}\nContext:\n{_truncate_context(context)}"
+        for i, (composition, context) in enumerate(items)
+    )
+    prompt = f"""{blocks}
 
-Context:
-{context}
-
-Is this material structurally stable and valid according to fundamental valence rules?
-Return ONLY a valid JSON object:
-{{
-  "is_valid": true
-}}
+For EACH candidate above, decide whether it is structurally stable and valid according to fundamental valence rules.
+Return ONLY a valid JSON array with one object per candidate:
+[
+  {{"index": 0, "is_valid": true}}
+]
 """
     content = await _generate_text(
         "You are an expert computational battery chemist. Return strictly JSON.",
@@ -188,8 +192,12 @@ Return ONLY a valid JSON object:
     )
 
     try:
-        cleaned = clean_json_string(content)
-        data = json.loads(cleaned)
-        return bool(data.get("is_valid", True))
+        parsed = json.loads(clean_json_string(content))
+        verdicts: dict[str, bool] = {}
+        for item in parsed:
+            index = int(item["index"])
+            if 0 <= index < len(items):
+                verdicts[items[index][0]] = bool(item.get("is_valid", True))
+        return verdicts
     except Exception:
-        return True # Default to True if we can't parse, so we don't block the loop forever
+        return {}
