@@ -16,6 +16,7 @@ import AuraMark from '../components/shared/AuraMark';
 import { supabase } from '../lib/supabase';
 import ChatInterface from '../components/dashboard/ChatInterface';
 import ReportsPanel from '../components/dashboard/ReportsPanel';
+import EvidencePanel from '../components/dashboard/EvidencePanel';
 
 type WorkspaceView = 'discovery' | 'evidence' | 'reports';
 
@@ -145,11 +146,7 @@ const Dashboard = () => {
         <div className="workspace-content">
           {activeView === 'discovery' && <ChatInterface />}
           {activeView === 'reports' && <ReportsPanel />}
-          {activeView === 'evidence' && (
-            <p className="reports-panel__empty">
-              Open a completed research report to explore its chemistry knowledge graph.
-            </p>
-          )}
+          {activeView === 'evidence' && <EvidencePanel />}
         </div>
       </main>
     </div>
