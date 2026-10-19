@@ -2,6 +2,7 @@ import sys
 import ssl
 
 from celery import Celery
+from celery.schedules import crontab
 from app.core.config import settings
 
 celery_app = Celery(
@@ -18,6 +19,12 @@ celery_app.conf.update(
     timezone='UTC',
     enable_utc=True,
     include=['worker.tasks'],
+    beat_schedule={
+        'nightly-battery-literature-sync': {
+            'task': 'periodic_nightly_harvest',
+            'schedule': crontab(hour=2, minute=0),
+        },
+    },
     # Keep Celery 5.x's default "retry connecting at startup" behavior
     # explicit, since Celery 6 changes what broker_connection_retry means.
     broker_connection_retry_on_startup=True,

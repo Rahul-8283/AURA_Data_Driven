@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     GA_SEED_POPULATION: int = 10
     GA_POPULATION_SIZE: int = 20
 
+    # Literature Harvesters
+    NCBI_API_KEY: str | None = None
+    CONTACT_EMAIL: str = "research@aura.ai"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
