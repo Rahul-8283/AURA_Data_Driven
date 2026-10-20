@@ -30,14 +30,13 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True,
 )
 
-if sys.platform == "darwin":
-    # macOS's multiprocessing defaults to the "spawn" start method, which
-    # doesn't inherit Celery's task registry into prefork worker child
-    # processes and causes "ValueError: not enough values to unpack
-    # (expected 3, got 0)" in fast_trace_task as soon as a task is received.
-    # The solo pool runs tasks in-process and sidesteps this entirely.
-    # Linux (production) deployments are unaffected and keep the faster
-    # prefork pool.
+if sys.platform in ("win32", "darwin"):
+    # Windows and macOS default multiprocessing to "spawn", which doesn't
+    # inherit Celery's task registry into prefork child worker processes
+    # and causes "ValueError: not enough values to unpack (expected 3, got 0)"
+    # in fast_trace_task as soon as a task is received.
+    # The solo pool runs tasks in-process and resolves this completely.
+    # Linux (production) deployments are unaffected and keep the faster prefork pool.
     celery_app.conf.worker_pool = "solo"
 
 # Managed Redis providers (e.g. Upstash) expose a TLS endpoint via the
