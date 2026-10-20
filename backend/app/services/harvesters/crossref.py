@@ -38,7 +38,7 @@ class CrossrefHarvester(BaseHarvester):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
                 resp = await client.get(self.api_url, params=params, headers=headers)
                 if resp.status_code != 200:
                     logger.warning(f"Crossref API returned status {resp.status_code}")

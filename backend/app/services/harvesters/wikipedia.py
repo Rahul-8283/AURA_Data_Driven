@@ -22,7 +22,7 @@ class WikipediaHarvester(BaseHarvester):
         results: List[HarvestedDocument] = []
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
                 search_params = {
                     "action": "query",
                     "list": "search",
