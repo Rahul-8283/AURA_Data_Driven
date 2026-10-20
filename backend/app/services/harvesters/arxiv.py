@@ -15,7 +15,7 @@ class ArxivHarvester(BaseHarvester):
             user_agent=f"AURA-BatteryResearch/1.0 ({settings.CONTACT_EMAIL})",
             min_delay_seconds=3.0  # Respect arXiv 1 request every 3 seconds policy
         )
-        self.api_url = "http://export.arxiv.org/api/query"
+        self.api_url = "https://export.arxiv.org/api/query"
 
     async def search(self, query: str, max_results: int = 10) -> List[HarvestedDocument]:
         await self._throttle()
@@ -33,7 +33,7 @@ class ArxivHarvester(BaseHarvester):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
                 resp = await client.get(self.api_url, params=params, headers=headers)
                 if resp.status_code != 200:
                     logger.warning(f"arXiv API returned status {resp.status_code}")

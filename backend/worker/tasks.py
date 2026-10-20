@@ -137,6 +137,14 @@ def run_discovery_loop(self, user_prompt: str, task_id: str, user_id: str = "def
     }
 
 
+def _safe_update_state(task_self, state: str, meta: dict):
+    if task_self and getattr(task_self, "request", None) and getattr(task_self.request, "id", None):
+        try:
+            task_self.update_state(state=state, meta=meta)
+        except Exception as e:
+            logger.debug(f"Could not update task state: {e}")
+
+
 @celery_app.task(bind=True, name="harvest_and_ingest_task")
 def harvest_and_ingest_task(self, query: str, sources: list = None, max_results: int = 10):
     """
@@ -149,7 +157,7 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
     else:
         active_sources = sources
 
-    self.update_state(state="PROGRESS", meta={
+    _safe_update_state(self, state="PROGRESS", meta={
         "stage": "fetching",
         "message": f"Querying {', '.join(active_sources)} for '{query}'...",
         "papers_found": 0,
@@ -179,7 +187,7 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
     all_docs = asyncio.run(_fetch_all())
     total_found = len(all_docs)
 
-    self.update_state(state="PROGRESS", meta={
+    _safe_update_state(self, state="PROGRESS", meta={
         "stage": "deduplicating",
         "message": f"Found {total_found} articles. Deduplicating against local index...",
         "papers_found": total_found,
@@ -211,7 +219,7 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
         process_and_upsert(collection, chunks, base_metadata=base_meta, doi=doc.doi)
         newly_indexed += 1
 
-    self.update_state(state="PROGRESS", meta={
+    _safe_update_state(self, state="PROGRESS", meta={
         "stage": "extracting_triplets",
         "message": f"Indexed {newly_indexed} new articles into ChromaDB. Mining Neo4j chemical triplets...",
         "papers_found": total_found,
@@ -249,8 +257,9 @@ def periodic_nightly_harvest(self):
     results = []
     for topic in topics:
         try:
-            res = harvest_and_ingest_task(topic, sources=["arxiv", "crossref", "pubmed"], max_results=5)
+            res = harvest_and_ingest_task.apply(args=[topic, ["arxiv", "crossref", "pubmed"], 5]).result
             results.append(res)
         except Exception as e:
             logger.error(f"Error in nightly harvest for topic '{topic}': {e}")
     return {"status": "Complete", "topics_processed": len(results)}
+
