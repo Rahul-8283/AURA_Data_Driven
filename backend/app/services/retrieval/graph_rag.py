@@ -5,7 +5,7 @@ import requests
 from app.core.config import settings
 from app.services.retrieval.graph_search import get_graph_context
 from app.services.retrieval.vector_search import get_vector_context
-from app.db.chroma_client import init_literature_collection
+from app.db.literature_store import get_literature_store
 
 logger = logging.getLogger(__name__)
 
@@ -76,28 +76,16 @@ class GraphRAGService:
     async def retrieve_context(query: str, summarize: bool = False, entities: list[str] | None = None) -> str:
         """
         Orchestrates the GraphRAG pipeline by concurrently fetching semantic
-        evidence from ChromaDB and structural rules from Neo4j, then processes
+        evidence from pgvector and structural rules from Neo4j, then processes
         the fused, section-demarcated context. With summarize=True the context is
         rewritten by an LLM into prose (used by the chat endpoint only). Passing
         entities skips the LLM entity extraction.
         """
         started = time.perf_counter()
-        # Ensure ChromaDB collection is loaded. 
-        try:
-            collection = await asyncio.to_thread(init_literature_collection)
-        except Exception as e:
-            logger.error(f"Failed to load Chroma collection: {e}")
-            collection = None
-        
+
         # Fire both I/O bound database queries simultaneously
         graph_task = get_graph_context(query, entities)
-        
-        if collection:
-            vector_task = get_vector_context(collection, query, n_results=5)
-        else:
-            async def fallback_vector():
-                return "Error retrieving literature data (ChromaDB connection failed)."
-            vector_task = fallback_vector()
+        vector_task = get_vector_context(get_literature_store(), query, n_results=5)
         
         # Wait for both to resolve concurrently
         try:

@@ -5,7 +5,7 @@ import asyncio
 import time
 import logging
 from app.core.config import settings
-from app.db.chroma_client import init_literature_collection
+from app.db.literature_store import get_literature_store
 from app.db.supabase import supabase_client
 from app.services.cache import clear_llm_caches
 from app.services.graph.extractor import extract_triplets_from_text
@@ -54,36 +54,33 @@ def _safe_update_state(task_self, state: str, meta: dict):
             logger.debug(f"Could not update task state: {e}")
 
 
-@celery_app.task(bind=True, name="process_chroma_chunks")
-def process_chroma_chunks_task(self, chunk_ids: list = None):
+@celery_app.task(bind=True, name="extract_graph_triplets")
+def extract_graph_triplets_task(self, chunk_ids: list = None):
     """
-    Mines chunks that have not been through triplet extraction yet and ingests the validated
-    triplets into Neo4j. Chunks go to the LLM in groups, and one run spends at most
+    Mines literature chunks that have not been through triplet extraction yet and ingests the
+    validated triplets into Neo4j. Chunks go to the LLM in groups, and one run spends at most
     GRAPH_EXTRACTION_MAX_CALLS requests, so it cannot exhaust the daily quota shared with discovery
     runs; whatever is left stays pending for the next run. Pass chunk_ids to restrict a run to
     freshly indexed chunks. Stops early, without marking anything it did not finish, when the quota
     is spent, the providers keep failing, or Neo4j rejects a write.
     """
-    collection = init_literature_collection()
-    candidates = collection.get(ids=chunk_ids, include=["metadatas"]) if chunk_ids else collection.get(include=["metadatas"])
-    pending_ids = [
-        chunk_id for chunk_id, meta in zip(candidates["ids"], candidates["metadatas"])
-        if not (meta or {}).get("graph_extracted")
-    ]
-
+    store = get_literature_store()
     group_size = max(1, settings.GRAPH_EXTRACTION_GROUP_SIZE)
     max_groups = max(1, settings.GRAPH_EXTRACTION_MAX_CALLS)
-    groups = [pending_ids[i:i + group_size] for i in range(0, len(pending_ids), group_size)][:max_groups]
+
+    total_pending = store.count_pending(chunk_ids)
+    rows = store.fetch_pending(group_size * max_groups, chunk_ids)
+    groups = [rows[i:i + group_size] for i in range(0, len(rows), group_size)]
 
     chunks_extracted = 0
     triplets_ingested = 0
     consecutive_failures = 0
     stopped_reason = None
 
-    for group_number, group_ids in enumerate(groups, start=1):
-        batch = collection.get(ids=group_ids, include=["documents", "metadatas"])
+    for group_number, group in enumerate(groups, start=1):
+        group_ids = [chunk_id for chunk_id, _ in group]
         try:
-            triplets = extract_triplets_from_text("\n\n".join(batch["documents"]))
+            triplets = extract_triplets_from_text("\n\n".join(document for _, document in group))
         except LLMQuotaExceeded:
             stopped_reason = "quota_exhausted"
             logger.warning("Triplet extraction stopped: LLM quota exhausted. Remaining chunks stay pending.")
@@ -104,11 +101,8 @@ def process_chroma_chunks_task(self, chunk_ids: list = None):
                 logger.error(f"Triplet ingestion failed ({type(e).__name__}); stopping extraction run.")
                 break
 
-        collection.update(
-            ids=batch["ids"],
-            metadatas=[{**(meta or {}), "graph_extracted": True} for meta in batch["metadatas"]],
-        )
-        chunks_extracted += len(batch["ids"])
+        store.mark_graph_extracted(group_ids)
+        chunks_extracted += len(group_ids)
         triplets_ingested += len(triplets)
         _safe_update_state(self, "PROGRESS", {
             "stage": "extracting_triplets",
@@ -121,7 +115,7 @@ def process_chroma_chunks_task(self, chunk_ids: list = None):
     if triplets_ingested:
         clear_llm_caches()
 
-    chunks_pending = len(pending_ids) - chunks_extracted
+    chunks_pending = total_pending - chunks_extracted
     message = f"Extracted {triplets_ingested} triplets from {chunks_extracted} chunks; {chunks_pending} chunks still pending."
     if stopped_reason:
         message += f" Stopped early: {stopped_reason}."
@@ -179,7 +173,7 @@ def run_discovery_loop(self, user_prompt: str, task_id: str, user_id: str = "def
 def harvest_and_ingest_task(self, query: str, sources: list = None, max_results: int = 10):
     """
     Harvests literature from the requested sources, drops off-topic and duplicate documents,
-    chunks and embeds the rest into ChromaDB, then queues triplet extraction for just those new
+    chunks and embeds the rest into pgvector, then queues triplet extraction for just those new
     chunks. Fails when every source fails; a partial failure is reported in source_errors.
     """
     requested = list(sources or HARVESTER_SOURCES)
@@ -232,8 +226,8 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
         "new_papers_indexed": 0,
     })
 
-    collection = init_literature_collection()
-    dedup = LiteratureDeduplicator(collection=collection)
+    store = get_literature_store()
+    dedup = LiteratureDeduplicator(store=store)
     chunker = get_chunker()
 
     seen = set()
@@ -264,13 +258,13 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
             "authors": ", ".join(doc.authors[:5]),
             "graph_extracted": False,
         }
-        new_chunk_ids.extend(process_and_upsert(collection, chunks, base_metadata=base_meta, doi=doc.doi))
+        new_chunk_ids.extend(process_and_upsert(store, chunks, base_metadata=base_meta, doi=doc.doi))
         newly_indexed += 1
 
     extraction_task_id = None
     if new_chunk_ids:
         clear_llm_caches()
-        extraction_task_id = process_chroma_chunks_task.delay(chunk_ids=new_chunk_ids).id
+        extraction_task_id = extract_graph_triplets_task.delay(chunk_ids=new_chunk_ids).id
 
     message = f"Indexed {newly_indexed} new documents from {', '.join(s for s in active_sources if s not in source_errors)}."
     if extraction_task_id:

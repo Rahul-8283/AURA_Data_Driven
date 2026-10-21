@@ -71,7 +71,7 @@ async def _run_graph(state: dict, live: bool) -> dict:
         with patch("app.services.llm.client.get_client", return_value=FakeClient()), \
              patch("app.agents.nodes.planner.requests.post", side_effect=_requests_post), \
              patch("app.services.llm.client.requests.post", side_effect=_requests_post), \
-             patch("app.services.retrieval.graph_rag.init_literature_collection", return_value=None), \
+             patch("app.services.retrieval.graph_rag.get_literature_store", return_value=MagicMock(search=lambda q, n: [])), \
              patch("app.services.retrieval.graph_search.neo4j_conn") as neo4j:
             neo4j.get_session.return_value.__enter__.return_value.execute_read.return_value = []
             return await app_graph.ainvoke(state, config={"recursion_limit": recursion_limit(settings.GA_GENERATIONS)})
@@ -106,6 +106,6 @@ async def run(generations: int, live: bool) -> int:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--generations", type=int, default=3)
-    parser.add_argument("--live", action="store_true", help="use real OpenRouter, Neo4j and ChromaDB (spends quota)")
+    parser.add_argument("--live", action="store_true", help="use real OpenRouter, Neo4j and Supabase/pgvector (spends quota)")
     args = parser.parse_args()
     sys.exit(asyncio.run(run(args.generations, args.live)))

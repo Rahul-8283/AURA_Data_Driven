@@ -9,16 +9,12 @@ logger = logging.getLogger(__name__)
     wait=wait_exponential(multiplier=1, min=4, max=10),
     stop=stop_after_attempt(5)
 )
-def batch_upsert(collection, texts: List[str], metadatas: List[Dict], ids: List[str]):
-    """Upsert documents into ChromaDB with exponential backoff on failure."""
+def batch_upsert(store, texts: List[str], metadatas: List[Dict], ids: List[str]):
+    """Embed and upsert chunks into pgvector, with exponential backoff on failure."""
     logger.info(f"Upserting batch of {len(texts)} chunks...")
-    collection.upsert(
-        documents=texts,
-        metadatas=metadatas,
-        ids=ids
-    )
+    store.upsert(ids, texts, metadatas)
 
-def process_and_upsert(collection, chunks: List[str], base_metadata: Dict, doi: str) -> List[str]:
+def process_and_upsert(store, chunks: List[str], base_metadata: Dict, doi: str) -> List[str]:
     """Processes chunks into batches of 100 and upserts them. Returns the chunk ids written."""
     batch_size = 100
     written_ids: List[str] = []
@@ -40,7 +36,7 @@ def process_and_upsert(collection, chunks: List[str], base_metadata: Dict, doi: 
             batch_metadatas.append(meta)
             batch_ids.append(chunk_id)
             
-        batch_upsert(collection, batch_chunks, batch_metadatas, batch_ids)
+        batch_upsert(store, batch_chunks, batch_metadatas, batch_ids)
         written_ids.extend(batch_ids)
 
     return written_ids

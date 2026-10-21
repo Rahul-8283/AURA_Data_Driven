@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.core.security import get_current_user
-from app.db.chroma_client import init_literature_collection
+from app.db.literature_store import get_literature_store
 from app.db.neo4j_client import neo4j_conn
 from app.services.harvesters import HARVESTER_SOURCES
 from worker.tasks import harvest_and_ingest_task
@@ -111,8 +111,8 @@ async def get_sync_status(task_id: str):
 
 STATS_STORE_TIMEOUT_SECONDS = 6.0
 
-def _chroma_count() -> int:
-    return init_literature_collection().count()
+def _vector_count() -> int:
+    return get_literature_store().count()
 
 def _neo4j_counts() -> tuple[int, int]:
     with neo4j_conn.get_session() as session:
@@ -134,24 +134,24 @@ async def _bounded(name: str, read):
 @router.get("/stats")
 async def get_knowledge_stats():
     """
-    High-level statistics for the ChromaDB vectors and Neo4j knowledge graph.
+    High-level statistics for the pgvector literature store and the Neo4j knowledge graph.
     Both stores are read concurrently and each is bounded, so the call returns within
     about STATS_STORE_TIMEOUT_SECONDS even when a store is unreachable.
     """
-    (chroma_count, chroma_error), (graph_counts, graph_error) = await asyncio.gather(
-        _bounded("ChromaDB", _chroma_count),
+    (vector_count, vector_error), (graph_counts, graph_error) = await asyncio.gather(
+        _bounded("pgvector", _vector_count),
         _bounded("Neo4j", _neo4j_counts),
     )
     nodes, relationships = graph_counts if graph_counts else (None, None)
 
     errors = {}
-    if chroma_error:
-        errors["chroma"] = chroma_error
+    if vector_error:
+        errors["pgvector"] = vector_error
     if graph_error:
         errors["neo4j"] = graph_error
 
     return {
-        "chroma_literature_chunks": chroma_count,
+        "literature_chunks": vector_count,
         "neo4j_nodes": nodes,
         "neo4j_relationships": relationships,
         "errors": errors,

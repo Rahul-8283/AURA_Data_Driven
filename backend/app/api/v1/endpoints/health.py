@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.core.security import get_current_user
 from app.db.neo4j_client import neo4j_conn
-from app.db.chroma_client import chroma_client
+from app.db.literature_store import get_literature_store
 from app.db.supabase import supabase_client
 from worker.tasks import test_dummy_task
 from app.core.celery_app import celery_app
@@ -27,13 +27,13 @@ async def db_health_check():
     neo4j_ok = neo4j_conn.verify_connectivity()
     status["neo4j"] = "connected" if neo4j_ok else "disconnected"
     
-    # Check ChromaDB
+    # Check pgvector (literature store)
     try:
-        chroma_client.heartbeat()
-        status["chroma"] = "connected"
+        get_literature_store().heartbeat()
+        status["pgvector"] = "connected"
     except Exception:
-        logger.exception("ChromaDB health check failed")
-        status["chroma"] = "disconnected"
+        logger.exception("pgvector health check failed")
+        status["pgvector"] = "disconnected"
         
     # Check Supabase
     try:

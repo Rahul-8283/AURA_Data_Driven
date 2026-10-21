@@ -1,6 +1,6 @@
 import httpx
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from app.core.config import settings
 from app.services.harvesters import (
@@ -149,19 +149,21 @@ def test_title_key_ignores_case_punctuation_and_spacing():
 
 
 def test_same_paper_from_another_source_is_detected_by_title():
-    collection = MagicMock()
-    collection.get.side_effect = lambda where, limit: {"ids": ["x"]} if "title_key" in where else {"ids": []}
-    dedup = LiteratureDeduplicator(collection=collection)
+    store = MagicMock()
+    store.exists.side_effect = lambda doi=None, title_key=None: title_key is not None
+    dedup = LiteratureDeduplicator(store=store)
 
     assert dedup.is_already_indexed("arxiv:2401.1", "Doped LFP Cathodes") is True
-    queried = [call.kwargs["where"] for call in collection.get.call_args_list]
-    assert queried == [{"doi": "arxiv:2401.1"}, {"title_key": title_key("Doped LFP Cathodes")}]
+    assert store.exists.call_args_list == [
+        call(doi="arxiv:2401.1"),
+        call(title_key=title_key("Doped LFP Cathodes")),
+    ]
 
 
 def test_document_without_doi_or_title_is_never_a_duplicate():
-    collection = MagicMock()
-    assert LiteratureDeduplicator(collection=collection).is_already_indexed("", None) is False
-    collection.get.assert_not_called()
+    store = MagicMock()
+    assert LiteratureDeduplicator(store=store).is_already_indexed("", None) is False
+    store.exists.assert_not_called()
 
 
 # --- contact email ---------------------------------------------------------------------------

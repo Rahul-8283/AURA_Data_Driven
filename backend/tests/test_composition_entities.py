@@ -18,7 +18,7 @@ async def test_provided_entities_skip_llm_extraction(mock_neo4j, mock_extract):
 
 
 @pytest.mark.asyncio
-@patch("app.services.retrieval.graph_rag.init_literature_collection", return_value=None)
+@patch("app.services.retrieval.graph_rag.get_literature_store", return_value=None)
 @patch("app.services.retrieval.graph_rag.get_graph_context", new_callable=AsyncMock, return_value="graph")
 async def test_retrieve_context_threads_entities_to_graph(mock_graph, _collection):
     await GraphRAGService.retrieve_context("query", entities=["Li", "Mn", "O"])

@@ -12,7 +12,7 @@ from app.core.config import Settings, settings
 from app.scripts import simulate_discovery_run as simulator
 from app.services.cache import TTLCache, clear_llm_caches
 from app.services.llm.client import PredictionResult
-from worker.tasks import harvest_and_ingest_task, process_chroma_chunks_task
+from worker.tasks import harvest_and_ingest_task, extract_graph_triplets_task
 
 PRED = PredictionResult(specific_capacity=200.0, voltage=3.8, cycle_life=1000, cost_estimate_usd_kg=25.0, reasoning="t")
 
@@ -108,17 +108,17 @@ def test_clearing_drops_every_registered_llm_cache():
 # --- ingestion invalidates caches only when the knowledge base actually changed ---------------
 
 def test_indexing_new_literature_clears_the_llm_caches():
-    from tests.test_ingestion_pipeline import FakeCollection, fake_harvester, make_doc, run_harvest
+    from tests.test_ingestion_pipeline import FakeStore, fake_harvester, make_doc, run_harvest
     with patch("worker.tasks.clear_llm_caches") as clear:
-        run_harvest(FakeCollection(), {"arxiv": fake_harvester([make_doc("Mg-doped NMC811 cathodes", "arxiv:1")])}, sources=["arxiv"])
+        run_harvest(FakeStore(), {"arxiv": fake_harvester([make_doc("Mg-doped NMC811 cathodes", "arxiv:1")])}, sources=["arxiv"])
 
     clear.assert_called_once()
 
 
 def test_a_harvest_that_finds_nothing_new_leaves_the_caches_alone():
-    from tests.test_ingestion_pipeline import FakeCollection, fake_harvester, run_harvest
+    from tests.test_ingestion_pipeline import FakeStore, fake_harvester, run_harvest
     with patch("worker.tasks.clear_llm_caches") as clear:
-        run_harvest(FakeCollection(), {"arxiv": fake_harvester([])}, sources=["arxiv"])
+        run_harvest(FakeStore(), {"arxiv": fake_harvester([])}, sources=["arxiv"])
 
     clear.assert_not_called()
 
@@ -168,7 +168,7 @@ def test_the_unused_huggingface_key_is_optional(monkeypatch):
         monkeypatch.delenv(name, raising=False)
     config = Settings(
         _env_file=None, SUPABASE_URL="x", SUPABASE_SERVICE_ROLE_KEY="x", SUPABASE_JWT_SECRET="x",
-        CHROMA_DATABASE="x", gemini_api_key="x", NEO4J_URI="x", NEO4J_USERNAME="x", NEO4J_PASSWORD="x",
+        gemini_api_key="x", NEO4J_URI="x", NEO4J_USERNAME="x", NEO4J_PASSWORD="x",
         REDIS_URL="redis://x",
     )
 

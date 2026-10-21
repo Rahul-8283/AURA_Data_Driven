@@ -30,12 +30,9 @@ def test_clean_abstract_strips_jats_tags():
     assert "solid-state battery study" in cleaned
 
 def test_literature_deduplicator():
-    mock_collection = MagicMock()
-    mock_collection.get.side_effect = [
-        {"ids": ["id-123"]},  # first call: already indexed
-        {"ids": []},          # second call: novel
-    ]
-    dedup = LiteratureDeduplicator(collection=mock_collection)
+    store = MagicMock()
+    store.exists.side_effect = [True, False]  # first DOI is indexed, second is novel
+    dedup = LiteratureDeduplicator(store=store)
     assert dedup.is_already_indexed("doi:10.1016/j.jpowsour.2024") is True
     assert dedup.is_already_indexed("doi:10.1016/j.jpowsour.9999") is False
 

@@ -1,16 +1,19 @@
-import os
-from chromadb import EmbeddingFunction, Documents, Embeddings
-from chromadb.utils import embedding_functions
-from app.core.config import settings
-import logging
+from functools import lru_cache
+from typing import List
 
-logger = logging.getLogger(__name__)
+from fastembed import TextEmbedding
 
-def get_huggingface_embedding_function():
-    try:
-        # Use ChromaDB's built-in ONNX runtime to execute all-MiniLM-L6-v2 locally.
-        # This bypasses all external API dependencies and network blocking.
-        return embedding_functions.DefaultEmbeddingFunction()
-    except Exception as e:
-        logger.error(f"Failed to initialize embedding function: {str(e)}")
-        raise
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_DIM = 384
+
+
+@lru_cache(maxsize=1)
+def _model() -> TextEmbedding:
+    return TextEmbedding(EMBEDDING_MODEL)
+
+
+def embed_texts(texts: List[str]) -> List[List[float]]:
+    """Normalized 384-dimensional all-MiniLM-L6-v2 embeddings, computed locally with ONNX."""
+    if not texts:
+        return []
+    return [vector.tolist() for vector in _model().embed(texts)]

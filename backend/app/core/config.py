@@ -9,10 +9,6 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str
     SUPABASE_JWT_SECRET: str
     
-    # ChromaDB
-    CHROMA_DATABASE: str
-    CHROMA_PERSIST_DIRECTORY: str = "./chroma_data"
-    
     # LLM/Embeddings
     HF_API_key: str | None = None
     gemini_api_key: str

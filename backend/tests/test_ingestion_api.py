@@ -82,7 +82,7 @@ def test_status_endpoint_returns_success():
         assert data["new_papers_indexed"] == 4
 
 def test_stats_endpoint():
-    with patch("app.api.v1.endpoints.ingestion.init_literature_collection") as mock_col, \
+    with patch("app.api.v1.endpoints.ingestion.get_literature_store") as mock_col, \
          patch("app.api.v1.endpoints.ingestion.neo4j_conn"):
         mock_c = MagicMock()
         mock_c.count.return_value = 150
@@ -91,6 +91,6 @@ def test_stats_endpoint():
         resp = client.get("/api/v1/ingestion/stats")
         assert resp.status_code == 200
         data = resp.json()
-        assert "chroma_literature_chunks" in data
+        assert "literature_chunks" in data
         assert "supported_sources" in data
         assert "arXiv" in data["supported_sources"]
