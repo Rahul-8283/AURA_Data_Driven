@@ -4,15 +4,17 @@ from app.agents.state import init_research_state
 import asyncio
 import time
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from app.core.config import settings
 from app.db.chroma_client import init_literature_collection
 from app.db.supabase import supabase_client
 from app.services.graph.extractor import extract_triplets_from_text
 from app.services.graph.ingestion import ingest_triplets
-from app.services.llm.errors import LLMUnavailableError
+from app.services.llm.errors import LLMQuotaExceeded, LLMUnavailableError
 from app.services.harvesters import (
+    HARVESTER_SOURCES,
     ArxivHarvester,
     CrossrefHarvester,
+    HarvesterError,
     LiteratureDeduplicator,
     PubMedHarvester,
     WikipediaHarvester,
@@ -40,61 +42,92 @@ def test_dummy_task(self, iterations: int):
         self.update_state(state='PROGRESS', meta={'current': i, 'total': iterations})
     return {"status": "Complete", "result": f"Processed {iterations} items."}
 
+MAX_CONSECUTIVE_EXTRACTION_FAILURES = 3
+
+
+def _safe_update_state(task_self, state: str, meta: dict):
+    if task_self and getattr(task_self, "request", None) and getattr(task_self.request, "id", None):
+        try:
+            task_self.update_state(state=state, meta=meta)
+        except Exception as e:
+            logger.debug(f"Could not update task state: {e}")
+
+
 @celery_app.task(bind=True, name="process_chroma_chunks")
-def process_chroma_chunks_task(self):
+def process_chroma_chunks_task(self, chunk_ids: list = None):
     """
-    Background task that iterates through text chunks stored in ChromaDB,
-    passes them to the LLM extraction service concurrently, and ingests
-    the validated triplets into Neo4j.
+    Mines chunks that have not been through triplet extraction yet and ingests the validated
+    triplets into Neo4j. Chunks go to the LLM in groups, and one run spends at most
+    GRAPH_EXTRACTION_MAX_CALLS requests, so it cannot exhaust the daily quota shared with discovery
+    runs; whatever is left stays pending for the next run. Pass chunk_ids to restrict a run to
+    freshly indexed chunks. Stops early, without marking anything it did not finish, when the quota
+    is spent, the providers keep failing, or Neo4j rejects a write.
     """
     collection = init_literature_collection()
-    
-    # Fetch all documents from the collection
-    results = collection.get(include=["documents"])
-    documents = results.get("documents", [])
-    
-    if not documents:
-        logger.warning("No documents found in ChromaDB collection to process.")
-        return {"status": "Complete", "processed": 0, "triplets_ingested": 0}
+    candidates = collection.get(ids=chunk_ids, include=["metadatas"]) if chunk_ids else collection.get(include=["metadatas"])
+    pending_ids = [
+        chunk_id for chunk_id, meta in zip(candidates["ids"], candidates["metadatas"])
+        if not (meta or {}).get("graph_extracted")
+    ]
 
-    total_docs = len(documents)
-    logger.info(f"Starting graph extraction for {total_docs} chunks...")
-    
-    total_triplets_ingested = 0
-    processed_count = 0
-    batch_size = 10
-    
-    for i in range(0, total_docs, batch_size):
-        batch = documents[i:i + batch_size]
-        batch_triplets = []
-        
-        # Process batch concurrently
-        with ThreadPoolExecutor(max_workers=batch_size) as executor:
-            future_to_doc = {executor.submit(extract_triplets_from_text, doc): doc for doc in batch}
-            for future in as_completed(future_to_doc):
-                try:
-                    triplets = future.result()
-                    if triplets:
-                        batch_triplets.extend([t.model_dump() for t in triplets])
-                except Exception as e:
-                    logger.error(f"Error extracting triplets for a chunk: {e}")
-        
-        # Ingest the batch into Neo4j
-        if batch_triplets:
+    group_size = max(1, settings.GRAPH_EXTRACTION_GROUP_SIZE)
+    max_groups = max(1, settings.GRAPH_EXTRACTION_MAX_CALLS)
+    groups = [pending_ids[i:i + group_size] for i in range(0, len(pending_ids), group_size)][:max_groups]
+
+    chunks_extracted = 0
+    triplets_ingested = 0
+    consecutive_failures = 0
+    stopped_reason = None
+
+    for group_number, group_ids in enumerate(groups, start=1):
+        batch = collection.get(ids=group_ids, include=["documents", "metadatas"])
+        try:
+            triplets = extract_triplets_from_text("\n\n".join(batch["documents"]))
+        except LLMQuotaExceeded:
+            stopped_reason = "quota_exhausted"
+            logger.warning("Triplet extraction stopped: LLM quota exhausted. Remaining chunks stay pending.")
+            break
+        except LLMUnavailableError:
+            consecutive_failures += 1
+            if consecutive_failures >= MAX_CONSECUTIVE_EXTRACTION_FAILURES:
+                stopped_reason = "llm_unavailable"
+                break
+            continue
+        consecutive_failures = 0
+
+        if triplets:
             try:
-                ingest_triplets(batch_triplets)
-                total_triplets_ingested += len(batch_triplets)
+                ingest_triplets([t.model_dump() for t in triplets])
             except Exception as e:
-                logger.error(f"Failed to ingest batch into Neo4j: {e}")
-                
-        processed_count += len(batch)
-        self.update_state(state='PROGRESS', meta={'current': processed_count, 'total': total_docs})
-        logger.info(f"Processed {processed_count}/{total_docs} chunks. Ingested {total_triplets_ingested} triplets so far.")
+                stopped_reason = "neo4j_error"
+                logger.error(f"Triplet ingestion failed ({type(e).__name__}); stopping extraction run.")
+                break
 
+        collection.update(
+            ids=batch["ids"],
+            metadatas=[{**(meta or {}), "graph_extracted": True} for meta in batch["metadatas"]],
+        )
+        chunks_extracted += len(batch["ids"])
+        triplets_ingested += len(triplets)
+        _safe_update_state(self, "PROGRESS", {
+            "stage": "extracting_triplets",
+            "message": f"Extracted {triplets_ingested} triplets from {chunks_extracted} chunks...",
+            "triplets_ingested": triplets_ingested,
+            "current": group_number,
+            "total": len(groups),
+        })
+
+    chunks_pending = len(pending_ids) - chunks_extracted
+    message = f"Extracted {triplets_ingested} triplets from {chunks_extracted} chunks; {chunks_pending} chunks still pending."
+    if stopped_reason:
+        message += f" Stopped early: {stopped_reason}."
     return {
-        "status": "Complete", 
-        "processed_chunks": total_docs, 
-        "total_triplets_ingested": total_triplets_ingested
+        "status": "Complete",
+        "chunks_extracted": chunks_extracted,
+        "chunks_pending": chunks_pending,
+        "triplets_ingested": triplets_ingested,
+        "stopped_reason": stopped_reason,
+        "message": message,
     }
 
 
@@ -138,54 +171,54 @@ def run_discovery_loop(self, user_prompt: str, task_id: str, user_id: str = "def
     }
 
 
-def _safe_update_state(task_self, state: str, meta: dict):
-    if task_self and getattr(task_self, "request", None) and getattr(task_self.request, "id", None):
-        try:
-            task_self.update_state(state=state, meta=meta)
-        except Exception as e:
-            logger.debug(f"Could not update task state: {e}")
-
-
 @celery_app.task(bind=True, name="harvest_and_ingest_task")
 def harvest_and_ingest_task(self, query: str, sources: list = None, max_results: int = 10):
     """
-    Asynchronous Celery task that harvests literature from Wikipedia, arXiv,
-    Crossref, and PubMed, deduplicates, chunks, embeds into ChromaDB, and
-    triggers Neo4j triplet extraction.
+    Harvests literature from the requested sources, drops off-topic and duplicate documents,
+    chunks and embeds the rest into ChromaDB, then queues triplet extraction for just those new
+    chunks. Fails when every source fails; a partial failure is reported in source_errors.
     """
-    if not sources or "all" in sources:
-        active_sources = ["arxiv", "wikipedia", "crossref", "pubmed"]
-    else:
-        active_sources = sources
+    requested = list(sources or HARVESTER_SOURCES)
+    active_sources = (
+        list(HARVESTER_SOURCES) if "all" in requested
+        else [name for name in dict.fromkeys(requested) if name in HARVESTER_SOURCES]
+    )
+    if not active_sources:
+        raise ValueError("No valid literature sources requested.")
 
     _safe_update_state(self, state="PROGRESS", meta={
         "stage": "fetching",
         "message": f"Querying {', '.join(active_sources)} for '{query}'...",
         "papers_found": 0,
         "new_papers_indexed": 0,
-        "triplets_ingested": 0
     })
 
-    harvesters_map = {
-        "wikipedia": WikipediaHarvester(),
-        "arxiv": ArxivHarvester(),
-        "crossref": CrossrefHarvester(),
-        "pubmed": PubMedHarvester(),
+    harvester_classes = {
+        "wikipedia": WikipediaHarvester,
+        "arxiv": ArxivHarvester,
+        "crossref": CrossrefHarvester,
+        "pubmed": PubMedHarvester,
     }
 
     async def _fetch_all():
-        all_docs = []
-        for src_name in active_sources:
-            h = harvesters_map.get(src_name)
-            if h:
-                try:
-                    docs = await h.harvest(query, max_results=max_results)
-                    all_docs.extend(docs)
-                except Exception as ex:
-                    logger.error(f"Harvester {src_name} failed: {ex}")
-        return all_docs
+        documents = []
+        errors = {}
+        for source in active_sources:
+            try:
+                documents.extend(await harvester_classes[source]().harvest(query, max_results=max_results))
+            except HarvesterError as ex:
+                errors[source] = str(ex)
+                logger.error(f"Harvester {source} failed: {ex}")
+            except Exception as ex:
+                errors[source] = f"{type(ex).__name__}"
+                logger.exception(f"Harvester {source} crashed")
+        return documents, errors
 
-    all_docs = asyncio.run(_fetch_all())
+    all_docs, source_errors = asyncio.run(_fetch_all())
+    if len(source_errors) == len(active_sources):
+        raise HarvesterError(
+            "All literature sources failed: " + "; ".join(f"{name}: {err}" for name, err in source_errors.items())
+        )
     total_found = len(all_docs)
 
     _safe_update_state(self, state="PROGRESS", meta={
@@ -193,15 +226,23 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
         "message": f"Found {total_found} articles. Deduplicating against local index...",
         "papers_found": total_found,
         "new_papers_indexed": 0,
-        "triplets_ingested": 0
     })
 
     collection = init_literature_collection()
     dedup = LiteratureDeduplicator(collection=collection)
     chunker = get_chunker()
 
+    seen = set()
+    new_chunk_ids = []
     newly_indexed = 0
     for doc in all_docs:
+        key = title_key(doc.title)
+        if doc.doi in seen or (key and key in seen):
+            continue  # same paper returned by two sources in this run
+        seen.add(doc.doi)
+        if key:
+            seen.add(key)
+
         if dedup.is_already_indexed(doc.doi, doc.title):
             continue
 
@@ -211,27 +252,26 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
 
         base_meta = {
             "title": doc.title,
-            "title_key": title_key(doc.title),
+            "title_key": key,
             "doi": doc.doi,
             "source": doc.source,
             "url": doc.url or "",
             "published_date": doc.published_date or "",
             "authors": ", ".join(doc.authors[:5]),
+            "graph_extracted": False,
         }
-        process_and_upsert(collection, chunks, base_metadata=base_meta, doi=doc.doi)
+        new_chunk_ids.extend(process_and_upsert(collection, chunks, base_metadata=base_meta, doi=doc.doi))
         newly_indexed += 1
 
-    _safe_update_state(self, state="PROGRESS", meta={
-        "stage": "extracting_triplets",
-        "message": f"Indexed {newly_indexed} new articles into ChromaDB. Mining Neo4j chemical triplets...",
-        "papers_found": total_found,
-        "new_papers_indexed": newly_indexed,
-        "triplets_ingested": 0
-    })
+    extraction_task_id = None
+    if new_chunk_ids:
+        extraction_task_id = process_chroma_chunks_task.delay(chunk_ids=new_chunk_ids).id
 
-    # Trigger graph extraction task if new chunks exist
-    if newly_indexed > 0:
-        process_chroma_chunks_task.delay()
+    message = f"Indexed {newly_indexed} new documents from {', '.join(s for s in active_sources if s not in source_errors)}."
+    if extraction_task_id:
+        message += f" Triplet extraction queued for {len(new_chunk_ids)} chunks."
+    if source_errors:
+        message += f" Sources failed: {', '.join(source_errors)}."
 
     return {
         "status": "Complete",
@@ -239,15 +279,18 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
         "sources": active_sources,
         "papers_found": total_found,
         "new_papers_indexed": newly_indexed,
-        "message": f"Successfully synced {newly_indexed} new documents from {', '.join(active_sources)}."
+        "chunks_indexed": len(new_chunk_ids),
+        "source_errors": source_errors,
+        "extraction_task_id": extraction_task_id,
+        "message": message,
     }
 
 
 @celery_app.task(bind=True, name="periodic_nightly_harvest")
 def periodic_nightly_harvest(self):
     """
-    Strategy 1: Autonomous Scheduled Harvester.
-    Sweeps latest battery research topics off-peak.
+    Sweeps a fixed list of battery research topics. Only scheduled when NIGHTLY_HARVEST_ENABLED is
+    set, and it fires only while a `celery beat` process is running.
     """
     topics = [
         "lithium-ion cathode degradation mechanisms",
@@ -256,12 +299,17 @@ def periodic_nightly_harvest(self):
         "silicon anode solid electrolyte interphase",
         "sodium-ion battery cathode novel dopants"
     ]
-    results = []
+    completed = 0
+    failed = []
     for topic in topics:
         try:
-            res = harvest_and_ingest_task.apply(args=[topic, ["arxiv", "crossref", "pubmed"], 5]).result
-            results.append(res)
+            harvest_and_ingest_task.apply(args=[topic, ["arxiv", "crossref", "pubmed"], 5], throw=True)
+            completed += 1
         except Exception as e:
-            logger.error(f"Error in nightly harvest for topic '{topic}': {e}")
-    return {"status": "Complete", "topics_processed": len(results)}
-
+            failed.append(topic)
+            logger.error(f"Nightly harvest failed for topic '{topic}' ({type(e).__name__})")
+    return {
+        "status": "Complete" if not failed else "Partial",
+        "topics_processed": completed,
+        "topics_failed": len(failed),
+    }

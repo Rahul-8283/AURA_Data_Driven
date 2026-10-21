@@ -82,7 +82,8 @@ def test_status_endpoint_returns_success():
         assert data["new_papers_indexed"] == 4
 
 def test_stats_endpoint():
-    with patch("app.api.v1.endpoints.ingestion.init_literature_collection") as mock_col:
+    with patch("app.api.v1.endpoints.ingestion.init_literature_collection") as mock_col, \
+         patch("app.api.v1.endpoints.ingestion.neo4j_conn"):
         mock_c = MagicMock()
         mock_c.count.return_value = 150
         mock_col.return_value = mock_c

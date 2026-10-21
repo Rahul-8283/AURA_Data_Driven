@@ -5,6 +5,17 @@ from celery import Celery
 from celery.schedules import crontab
 from app.core.config import settings
 
+def build_beat_schedule(nightly_harvest_enabled: bool) -> dict:
+    """The nightly sweep is opt-in; it also needs a separate `celery beat` process to fire."""
+    if not nightly_harvest_enabled:
+        return {}
+    return {
+        'nightly-battery-literature-sync': {
+            'task': 'periodic_nightly_harvest',
+            'schedule': crontab(hour=2, minute=0),
+        },
+    }
+
 celery_app = Celery(
     "aura_worker",
     broker=settings.REDIS_URL,
@@ -19,12 +30,7 @@ celery_app.conf.update(
     timezone='UTC',
     enable_utc=True,
     include=['worker.tasks'],
-    beat_schedule={
-        'nightly-battery-literature-sync': {
-            'task': 'periodic_nightly_harvest',
-            'schedule': crontab(hour=2, minute=0),
-        },
-    },
+    beat_schedule=build_beat_schedule(settings.NIGHTLY_HARVEST_ENABLED),
     # Keep Celery 5.x's default "retry connecting at startup" behavior
     # explicit, since Celery 6 changes what broker_connection_retry means.
     broker_connection_retry_on_startup=True,

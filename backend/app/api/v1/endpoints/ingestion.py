@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import uuid
 from typing import List, Literal
 from celery.result import AsyncResult
@@ -5,11 +7,14 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.celery_app import celery_app
+from app.core.config import settings
 from app.core.security import get_current_user
 from app.db.chroma_client import init_literature_collection
 from app.db.neo4j_client import neo4j_conn
 from app.services.harvesters import HARVESTER_SOURCES
 from worker.tasks import harvest_and_ingest_task
+
+logger = logging.getLogger(__name__)
 
 # Every ingestion route writes to or reads from the shared knowledge base, so all require a signed-in user.
 router = APIRouter(dependencies=[Depends(get_current_user)])
@@ -55,7 +60,7 @@ async def trigger_literature_sync(request: IngestionSyncRequest):
 @router.get("/status/{task_id}")
 async def get_sync_status(task_id: str):
     """
-    Poll the live state of an ingestion task.
+    Poll the live state of an ingestion task (a harvest run, or the triplet extraction it queued).
     """
     task_result = AsyncResult(task_id, app=celery_app)
 
@@ -75,6 +80,7 @@ async def get_sync_status(task_id: str):
             "message": meta.get("message", "Processing literature..."),
             "papers_found": meta.get("papers_found", 0),
             "new_papers_indexed": meta.get("new_papers_indexed", 0),
+            "triplets_ingested": meta.get("triplets_ingested", 0),
         }
     elif task_result.state == "SUCCESS":
         result = task_result.result or {}
@@ -86,6 +92,12 @@ async def get_sync_status(task_id: str):
             "sources": result.get("sources", []),
             "papers_found": result.get("papers_found", 0),
             "new_papers_indexed": result.get("new_papers_indexed", 0),
+            "source_errors": result.get("source_errors", {}),
+            "extraction_task_id": result.get("extraction_task_id"),
+            "chunks_extracted": result.get("chunks_extracted"),
+            "chunks_pending": result.get("chunks_pending"),
+            "triplets_ingested": result.get("triplets_ingested"),
+            "stopped_reason": result.get("stopped_reason"),
         }
     elif task_result.state == "FAILURE":
         return {
@@ -97,38 +109,40 @@ async def get_sync_status(task_id: str):
     else:
         return {"status": task_result.state}
 
-@router.get("/stats")
-async def get_knowledge_stats():
-    """
-    Get high-level statistics for ChromaDB vectors and Neo4j knowledge graph.
-    """
-    chroma_count = 0
-    neo4j_nodes = 0
-    neo4j_relationships = 0
+def _count(session, query: str):
+    record = session.run(query).single()
+    return record["cnt"] if record else 0
+
+def _collect_stats() -> dict:
+    """Blocking database calls; run in a worker thread. A store that cannot be reached is
+    reported as null with an entry in `errors`, never as a misleading zero."""
+    stats = {"chroma_literature_chunks": None, "neo4j_nodes": None, "neo4j_relationships": None}
+    errors = {}
 
     try:
-        collection = init_literature_collection()
-        chroma_count = collection.count()
-    except Exception as e:
-        chroma_count = 0
+        stats["chroma_literature_chunks"] = init_literature_collection().count()
+    except Exception:
+        logger.exception("Could not read ChromaDB statistics")
+        errors["chroma"] = "unavailable"
 
     try:
         with neo4j_conn.get_session() as session:
-            node_res = session.run("MATCH (n) RETURN count(n) AS cnt")
-            rec = node_res.single()
-            if rec:
-                neo4j_nodes = rec["cnt"]
-
-            rel_res = session.run("MATCH ()-[r]->() RETURN count(r) AS cnt")
-            rel_rec = rel_res.single()
-            if rel_rec:
-                neo4j_relationships = rel_rec["cnt"]
+            stats["neo4j_nodes"] = _count(session, "MATCH (n) RETURN count(n) AS cnt")
+            stats["neo4j_relationships"] = _count(session, "MATCH ()-[r]->() RETURN count(r) AS cnt")
     except Exception:
-        pass
+        logger.exception("Could not read Neo4j statistics")
+        errors["neo4j"] = "unavailable"
 
+    return {**stats, "errors": errors}
+
+@router.get("/stats")
+async def get_knowledge_stats():
+    """
+    High-level statistics for the ChromaDB vectors and Neo4j knowledge graph.
+    """
+    stats = await asyncio.to_thread(_collect_stats)
     return {
-        "chroma_literature_chunks": chroma_count,
-        "neo4j_nodes": neo4j_nodes,
-        "neo4j_relationships": neo4j_relationships,
-        "supported_sources": ["arXiv", "Wikipedia", "Crossref", "PubMed (NCBI)"]
+        **stats,
+        "supported_sources": ["arXiv", "Wikipedia", "Crossref", "PubMed (NCBI)"],
+        "nightly_sweep_enabled": settings.NIGHTLY_HARVEST_ENABLED,
     }

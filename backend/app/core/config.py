@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     # Literature Harvesters
     NCBI_API_KEY: str | None = None
     CONTACT_EMAIL: str = ""
+    # LLM requests one triplet-extraction run may spend (each covers GRAPH_EXTRACTION_GROUP_SIZE chunks).
+    # Kept small because the free OpenRouter tier allows only 50 requests a day, shared with discovery runs.
+    GRAPH_EXTRACTION_MAX_CALLS: int = 10
+    GRAPH_EXTRACTION_GROUP_SIZE: int = 4
+    # Off by default: the sweep spends LLM quota and only runs while `celery beat` is running.
+    NIGHTLY_HARVEST_ENABLED: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

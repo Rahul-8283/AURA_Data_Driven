@@ -18,9 +18,10 @@ def batch_upsert(collection, texts: List[str], metadatas: List[Dict], ids: List[
         ids=ids
     )
 
-def process_and_upsert(collection, chunks: List[str], base_metadata: Dict, doi: str):
-    """Processes chunks into batches of 100 and upserts them."""
+def process_and_upsert(collection, chunks: List[str], base_metadata: Dict, doi: str) -> List[str]:
+    """Processes chunks into batches of 100 and upserts them. Returns the chunk ids written."""
     batch_size = 100
+    written_ids: List[str] = []
     
     for i in range(0, len(chunks), batch_size):
         batch_chunks = chunks[i:i + batch_size]
@@ -40,3 +41,6 @@ def process_and_upsert(collection, chunks: List[str], base_metadata: Dict, doi: 
             batch_ids.append(chunk_id)
             
         batch_upsert(collection, batch_chunks, batch_metadatas, batch_ids)
+        written_ids.extend(batch_ids)
+
+    return written_ids
