@@ -53,7 +53,7 @@ export default function MaterialGraph({ materialName }: { materialName: string }
       <ForceGraph2D<MaterialGraphNode, MaterialGraphLink>
         graphData={graphData}
         nodeId="id"
-        height={420}
+        height={480}
         backgroundColor="transparent"
         nodeLabel={(node: GraphNode) => `${node.label} (${node.type})`}
         nodeColor={(node: GraphNode) => NODE_COLORS[node.type] ?? '#999999'}
