@@ -1,5 +1,5 @@
 from app.core.celery_app import celery_app
-from app.agents.workflow import app_graph
+from app.agents.workflow import app_graph, recursion_limit
 from app.agents.state import init_research_state
 import asyncio
 import time
@@ -7,6 +7,7 @@ import logging
 from app.core.config import settings
 from app.db.chroma_client import init_literature_collection
 from app.db.supabase import supabase_client
+from app.services.cache import clear_llm_caches
 from app.services.graph.extractor import extract_triplets_from_text
 from app.services.graph.ingestion import ingest_triplets
 from app.services.llm.errors import LLMQuotaExceeded, LLMUnavailableError
@@ -117,6 +118,9 @@ def process_chroma_chunks_task(self, chunk_ids: list = None):
             "total": len(groups),
         })
 
+    if triplets_ingested:
+        clear_llm_caches()
+
     chunks_pending = len(pending_ids) - chunks_extracted
     message = f"Extracted {triplets_ingested} triplets from {chunks_extracted} chunks; {chunks_pending} chunks still pending."
     if stopped_reason:
@@ -137,8 +141,8 @@ def run_discovery_loop(self, user_prompt: str, task_id: str, user_id: str = "def
 
     async def _run():
         last_state = initial_state
-        # planner + 20 x (mutator, predictor) + reporter exceeds LangGraph's default limit of 25
-        config = {"recursion_limit": 200}
+        # planner + N x (mutator, predictor) + reporter exceeds LangGraph's default limit of 25
+        config = {"recursion_limit": recursion_limit(settings.GA_GENERATIONS)}
         async for event in app_graph.astream(initial_state, config=config):
             for node_name, state_update in event.items():
                 last_state = state_update
@@ -265,6 +269,7 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
 
     extraction_task_id = None
     if new_chunk_ids:
+        clear_llm_caches()
         extraction_task_id = process_chroma_chunks_task.delay(chunk_ids=new_chunk_ids).id
 
     message = f"Indexed {newly_indexed} new documents from {', '.join(s for s in active_sources if s not in source_errors)}."

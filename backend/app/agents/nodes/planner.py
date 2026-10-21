@@ -1,7 +1,7 @@
 import logging
 import json
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 from app.agents.state import ResearchState
 from app.core.config import settings
 from app.services.ga.material import BatteryMaterial
@@ -116,12 +116,12 @@ def planner_node(state: ResearchState) -> ResearchState:
     try:
         # Try OpenRouter First
         parsed_data = call_openrouter(prompt)
-        state["logs"].append(f"[{datetime.utcnow().isoformat()}] Planner successfully extracted constraints using OpenRouter.")
+        state["logs"].append(f"[{datetime.now(timezone.utc).isoformat()}] Planner successfully extracted constraints using OpenRouter.")
     except Exception as e:
         logger.warning(f"OpenRouter extraction failed: {e}. Falling back to Gemini.")
         try:
             parsed_data = call_gemini_fallback(prompt)
-            state["logs"].append(f"[{datetime.utcnow().isoformat()}] Planner successfully extracted constraints using Gemini Fallback.")
+            state["logs"].append(f"[{datetime.now(timezone.utc).isoformat()}] Planner successfully extracted constraints using Gemini Fallback.")
         except Exception as gemini_err:
             logger.error(f"Gemini Fallback failed: {gemini_err}")
             if isinstance(e, LLMQuotaExceeded):
@@ -129,7 +129,7 @@ def planner_node(state: ResearchState) -> ResearchState:
                     "OpenRouter's free-model daily quota is used up and the Gemini fallback also failed. "
                     "Wait for the daily reset at 00:00 UTC or add OpenRouter credits."
                 ) from None
-            state["logs"].append(f"[{datetime.utcnow().isoformat()}] ERROR: All LLM parsers failed. Proceeding with empty constraints.")
+            state["logs"].append(f"[{datetime.now(timezone.utc).isoformat()}] ERROR: All LLM parsers failed. Proceeding with empty constraints.")
             parsed_data = {
                 "target_properties": {},
                 "base_material_class": "Unknown",
@@ -147,6 +147,6 @@ def planner_node(state: ResearchState) -> ResearchState:
     
     state["current_population"] = build_seed_population(state["excluded_elements"])
 
-    state["logs"].append(f"[{datetime.utcnow().isoformat()}] Population seeded with {len(state['current_population'])} baseline materials. Ready for generation 0.")
+    state["logs"].append(f"[{datetime.now(timezone.utc).isoformat()}] Population seeded with {len(state['current_population'])} baseline materials. Ready for generation 0.")
     
     return state

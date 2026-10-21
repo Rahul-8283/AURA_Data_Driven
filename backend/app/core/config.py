@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     CHROMA_PERSIST_DIRECTORY: str = "./chroma_data"
     
     # LLM/Embeddings
-    HF_API_key: str
+    HF_API_key: str | None = None
     gemini_api_key: str
     OPENROUTER_API_KEY: str | None = None
     
@@ -25,6 +25,10 @@ class Settings(BaseSettings):
 
     # Redis/Celery
     REDIS_URL: str
+
+    # LLM result caches (predictions and validity verdicts), kept per worker process
+    LLM_CACHE_TTL_SECONDS: int = 3600
+    LLM_CACHE_MAX_ENTRIES: int = 5000
 
     # Genetic algorithm sizing (lower these for quick test runs)
     GA_GENERATIONS: int = 20
