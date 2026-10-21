@@ -3651,7 +3651,7 @@ input:focus-visible {
 }
 
 .results-summary {
-  max-width: 76ch;
+  max-width: none;
   color: var(--text-muted);
   font-size: 0.9rem;
   line-height: 1.75;
