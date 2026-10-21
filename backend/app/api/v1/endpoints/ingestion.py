@@ -109,40 +109,52 @@ async def get_sync_status(task_id: str):
     else:
         return {"status": task_result.state}
 
-def _count(session, query: str):
-    record = session.run(query).single()
-    return record["cnt"] if record else 0
+STATS_STORE_TIMEOUT_SECONDS = 6.0
 
-def _collect_stats() -> dict:
-    """Blocking database calls; run in a worker thread. A store that cannot be reached is
-    reported as null with an entry in `errors`, never as a misleading zero."""
-    stats = {"chroma_literature_chunks": None, "neo4j_nodes": None, "neo4j_relationships": None}
-    errors = {}
+def _chroma_count() -> int:
+    return init_literature_collection().count()
 
+def _neo4j_counts() -> tuple[int, int]:
+    with neo4j_conn.get_session() as session:
+        nodes = session.run("MATCH (n) RETURN count(n) AS cnt").single()
+        relationships = session.run("MATCH ()-[r]->() RETURN count(r) AS cnt").single()
+        return (nodes["cnt"] if nodes else 0, relationships["cnt"] if relationships else 0)
+
+async def _bounded(name: str, read):
+    """Returns (value, error). A store that hangs or fails is reported, never waited on indefinitely."""
     try:
-        stats["chroma_literature_chunks"] = init_literature_collection().count()
+        return await asyncio.wait_for(asyncio.to_thread(read), timeout=STATS_STORE_TIMEOUT_SECONDS), None
+    except asyncio.TimeoutError:
+        logger.warning("%s statistics timed out after %.0fs", name, STATS_STORE_TIMEOUT_SECONDS)
+        return None, "timed out"
     except Exception:
-        logger.exception("Could not read ChromaDB statistics")
-        errors["chroma"] = "unavailable"
-
-    try:
-        with neo4j_conn.get_session() as session:
-            stats["neo4j_nodes"] = _count(session, "MATCH (n) RETURN count(n) AS cnt")
-            stats["neo4j_relationships"] = _count(session, "MATCH ()-[r]->() RETURN count(r) AS cnt")
-    except Exception:
-        logger.exception("Could not read Neo4j statistics")
-        errors["neo4j"] = "unavailable"
-
-    return {**stats, "errors": errors}
+        logger.exception("Could not read %s statistics", name)
+        return None, "unavailable"
 
 @router.get("/stats")
 async def get_knowledge_stats():
     """
     High-level statistics for the ChromaDB vectors and Neo4j knowledge graph.
+    Both stores are read concurrently and each is bounded, so the call returns within
+    about STATS_STORE_TIMEOUT_SECONDS even when a store is unreachable.
     """
-    stats = await asyncio.to_thread(_collect_stats)
+    (chroma_count, chroma_error), (graph_counts, graph_error) = await asyncio.gather(
+        _bounded("ChromaDB", _chroma_count),
+        _bounded("Neo4j", _neo4j_counts),
+    )
+    nodes, relationships = graph_counts if graph_counts else (None, None)
+
+    errors = {}
+    if chroma_error:
+        errors["chroma"] = chroma_error
+    if graph_error:
+        errors["neo4j"] = graph_error
+
     return {
-        **stats,
+        "chroma_literature_chunks": chroma_count,
+        "neo4j_nodes": nodes,
+        "neo4j_relationships": relationships,
+        "errors": errors,
         "supported_sources": ["arXiv", "Wikipedia", "Crossref", "PubMed (NCBI)"],
         "nightly_sweep_enabled": settings.NIGHTLY_HARVEST_ENABLED,
     }

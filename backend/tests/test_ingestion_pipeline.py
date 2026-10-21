@@ -349,4 +349,27 @@ def test_stats_run_their_blocking_calls_off_the_event_loop(client):
          patch.object(ingestion_endpoint, "neo4j_conn", neo4j_returning(1, 1)):
         client.get("/api/v1/ingestion/stats")
 
-    to_thread.assert_called_once_with(ingestion_endpoint._collect_stats)
+    called = {call.args[0] for call in to_thread.call_args_list}
+    assert called == {ingestion_endpoint._chroma_count, ingestion_endpoint._neo4j_counts}
+
+
+def test_a_hanging_store_is_reported_as_timed_out_within_the_limit(client, monkeypatch):
+    """The blocked read waits only 2s, far longer than the 0.3s limit. Without the bound, the
+    endpoint would return the read's eventual result with no error at all."""
+    import threading
+    monkeypatch.setattr(ingestion_endpoint, "STATS_STORE_TIMEOUT_SECONDS", 0.3)
+    release = threading.Event()
+
+    def hang(*_args, **_kwargs):
+        release.wait(2)
+
+    hanging_neo4j = MagicMock()
+    hanging_neo4j.get_session.return_value.__enter__.return_value.run.side_effect = hang
+    with patch.object(ingestion_endpoint, "init_literature_collection", return_value=MagicMock(count=lambda: 42)), \
+         patch.object(ingestion_endpoint, "neo4j_conn", hanging_neo4j):
+        body = client.get("/api/v1/ingestion/stats").json()
+    release.set()
+
+    assert body["chroma_literature_chunks"] == 42
+    assert body["neo4j_nodes"] is None and body["neo4j_relationships"] is None
+    assert body["errors"] == {"neo4j": "timed out"}
