@@ -23,7 +23,7 @@ Frontend (run from `frontend/`):
 - LangGraph pipeline (`app/agents/`): planner → mutator (GA) → validator (GraphRAG) → predictor (LLM) → fitness/loop → reporter. State is `ResearchState` in `app/agents/state.py`; graph is wired in `app/agents/workflow.py`.
 - Services in `app/services/`: `ingestion`, `embeddings.py`, `retrieval` (vector, graph, `graph_rag.py` fusion), `graph` (extractor, Neo4j ingestion), `ga` (material, operators, population, fitness), `llm` (OpenRouter client).
 - DB clients in `app/db/`; settings in `app/core/config.py` (pydantic-settings, reads `backend/.env`; see `.env.example`).
-- Supabase tables: `ResearchTasks`, `SavedMaterials`, plus `chat_messages` used by the chat UI.
+- Supabase tables: `ResearchTasks`, `SavedMaterials`, `chat_messages` (chat UI), and `literature_chunks` (pgvector literature store, see below).
 - Neo4j: nodes `Element`, `Material`, `Property`, `DegradationMode`; edges `CONTAINS`, `CAN_BE_DOPED_WITH`, `SUFFERS_FROM`, `PREVENTED_BY`.
 - Literature vectors: Supabase table `literature_chunks` (pgvector, 384-dim, HNSW cosine), queried through `match_literature_chunks`.
 

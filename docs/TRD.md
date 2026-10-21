@@ -47,8 +47,10 @@ LangGraph manages the state of the Genetic Algorithm across multiple specialized
 ### 3.1 Supabase (PostgreSQL) - Relational Data
 Used for application state, user management, and history.
 - **Users Table:** Managed by Supabase Auth.
-- **ResearchTasks Table:** `id`, `user_id`, `prompt`, `status` (pending, processing, completed), `created_at`.
-- **SavedMaterials Table:** `id`, `user_id`, `composition`, `predicted_capacity`, `predicted_cost`, `reasoning`.
+- **ResearchTasks Table:** `id`, `user_id`, `prompt`, `status` (processing, completed, failed), `result_json`, `created_at`.
+- **SavedMaterials Table:** `id`, `task_id`, `user_id`, `composition`, `predicted_capacity`, `predicted_cost`, `reasoning`, `created_at`.
+- **chat_messages Table:** `id`, `user_id`, `role`, `content`, `created_at`.
+- **literature_chunks Table:** shared literature with `embedding vector(384)`; see section 3.3.
 
 ### 3.2 Neo4j - Knowledge Graph
 Used for hard chemical rules and relationships.

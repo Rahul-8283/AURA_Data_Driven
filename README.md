@@ -142,7 +142,7 @@ The knowledge loop feeds the discovery loop: harvested literature and mined grap
 | Orchestration | LangGraph | The planner, mutator, predictor and reporter state machine |
 | Async execution | Celery with Upstash Redis over TLS | Discovery runs, harvests, graph mining, optional nightly sweep |
 | Package management | uv with `pyproject.toml` and `uv.lock` | Reproducible Python environment |
-| Identity and relational data | Supabase (Auth and PostgreSQL) | JWT auth, `ResearchTasks`, `SavedMaterials`, `chat_messages` |
+| Identity and relational data | Supabase (Auth and PostgreSQL) | JWT auth, `ResearchTasks`, `SavedMaterials`, `chat_messages`, `literature_chunks` (pgvector) |
 | Knowledge graph | Neo4j (Aura or local) | Structural chemistry rules |
 | Vector store | pgvector in Supabase Postgres, HNSW cosine index | Literature chunks and embeddings, in the same project as auth and run history |
 | Embeddings | fastembed, local ONNX `all-MiniLM-L6-v2` (384-dim) | Offline semantic embeddings, no external call |
@@ -886,10 +886,22 @@ erDiagram
         text content
         timestamptz created_at
     }
+    LITERATURE_CHUNKS {
+        text id PK
+        text document
+        vector_384 embedding
+        text doi
+        text title_key
+        boolean graph_extracted
+        jsonb metadata
+        timestamptz created_at
+    }
 ```
 
+`LITERATURE_CHUNKS` is shared literature, not user data, so it has no foreign keys. It is the only table with `vector(384)`, an HNSW cosine index, and RLS enabled with no policies.
+
 - Create everything by running [`backend/supabase/schema.sql`](backend/supabase/schema.sql) once in the Supabase SQL editor. It is idempotent.
-- Row level security is on for every table and scopes reads to `auth.uid() = user_id`.
+- Row level security is on for every table. The three user tables scope reads and writes to `auth.uid() = user_id`. `literature_chunks` has no policies, so only the service role can reach it.
 - The backend uses the **service role key**, which bypasses RLS. The frontend uses the **anon key**, which respects it.
 - `ResearchTasks.status` moves from `processing` to `completed` or `failed`. On failure `result_json` holds the reason.
 
@@ -1085,7 +1097,8 @@ TLS for `rediss://` is configured in code. Do not append `?ssl_cert_reqs=...` to
 
 ```bash
 # a) Supabase: run backend/supabase/schema.sql once in the SQL editor.
-#    It creates ResearchTasks, SavedMaterials, chat_messages and their RLS policies.
+#    It enables the pgvector extension and creates ResearchTasks, SavedMaterials, chat_messages,
+#    literature_chunks, their indexes, the match_literature_chunks function and RLS policies.
 
 # b) Seed the Neo4j knowledge graph (from backend/)
 uv run python -m app.scripts.seed_neo4j
@@ -1386,6 +1399,7 @@ AURA_Data_Driven/
 | Nightly sweep never runs | It is off by default and needs its own process | Set `NIGHTLY_HARVEST_ENABLED=true` and run `celery beat` |
 | Neo4j `Unable to retrieve routing information` | The Aura instance is paused or restarting | Resume it in the Aura console and use the `neo4j+s://` URI |
 | "Research reports" empty or database errors | Supabase tables are missing | Run `backend/supabase/schema.sql` |
+| Literature search or Evidence stats report a pgvector error | The `vector` extension, `literature_chunks` table or `match_literature_chunks` function is missing | Run `backend/supabase/schema.sql` in the Supabase SQL editor |
 | Browser CORS error against a deployed API | The origin is not allow-listed | Add it in `backend/main.py` |
 | `uv run pytest` cannot import `app` | Running from outside `backend/` | Run from `backend/`, where `pyproject.toml` sets the import path |
 
