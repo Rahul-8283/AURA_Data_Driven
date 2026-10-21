@@ -1,9 +1,17 @@
 import pytest
+from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
+from app.core.security import get_current_user
 from main import app
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def signed_in_user():
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id="user-1")
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 def test_sync_endpoint_triggers_celery_task():
     with patch("worker.tasks.harvest_and_ingest_task.apply_async") as mock_task:

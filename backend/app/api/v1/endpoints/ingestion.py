@@ -1,23 +1,35 @@
 import uuid
-from typing import List, Optional
+from typing import List, Literal
 from celery.result import AsyncResult
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.celery_app import celery_app
+from app.core.security import get_current_user
 from app.db.chroma_client import init_literature_collection
 from app.db.neo4j_client import neo4j_conn
+from app.services.harvesters import HARVESTER_SOURCES
 from worker.tasks import harvest_and_ingest_task
 
-router = APIRouter()
+# Every ingestion route writes to or reads from the shared knowledge base, so all require a signed-in user.
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 class IngestionSyncRequest(BaseModel):
-    query: str = Field(..., min_length=2, description="Target battery research topic to harvest")
-    sources: Optional[List[str]] = Field(
-        default=["arxiv", "wikipedia", "crossref", "pubmed"],
-        description="List of sources: arxiv, wikipedia, crossref, pubmed, or all"
+    query: str = Field(..., min_length=2, max_length=200, description="Target battery research topic to harvest")
+    sources: List[Literal["arxiv", "wikipedia", "crossref", "pubmed", "all"]] = Field(
+        default_factory=lambda: ["all"],
+        min_length=1,
+        description="Sources to query: arxiv, wikipedia, crossref, pubmed, or all"
     )
     max_results: int = Field(default=10, ge=1, le=50, description="Max results per source")
+
+    @field_validator("query")
+    @classmethod
+    def normalize_query(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if len(value) < 2:
+            raise ValueError("query must contain at least 2 characters")
+        return value
 
 @router.post("/sync", status_code=202)
 async def trigger_literature_sync(request: IngestionSyncRequest):
@@ -26,9 +38,7 @@ async def trigger_literature_sync(request: IngestionSyncRequest):
     literature sources. Runs out-of-band in Celery without blocking user requests.
     """
     task_id = str(uuid.uuid4())
-    sources = request.sources or ["arxiv", "wikipedia", "crossref", "pubmed"]
-    if "all" in sources:
-        sources = ["arxiv", "wikipedia", "crossref", "pubmed"]
+    sources = list(HARVESTER_SOURCES) if "all" in request.sources else list(dict.fromkeys(request.sources))
 
     task = harvest_and_ingest_task.apply_async(
         args=[request.query, sources, request.max_results],

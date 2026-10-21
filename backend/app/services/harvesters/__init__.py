@@ -5,7 +5,10 @@ from .crossref import CrossrefHarvester
 from .pubmed import PubMedHarvester
 from .deduplicator import LiteratureDeduplicator
 
+HARVESTER_SOURCES = ("arxiv", "wikipedia", "crossref", "pubmed")
+
 __all__ = [
+    "HARVESTER_SOURCES",
     "BaseHarvester",
     "HarvestedDocument",
     "WikipediaHarvester",

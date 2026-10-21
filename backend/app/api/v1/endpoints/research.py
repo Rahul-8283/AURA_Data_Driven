@@ -1,14 +1,17 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from celery.result import AsyncResult
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.core.celery_app import celery_app
 from app.core.security import get_current_user
 from app.db.supabase import supabase_client
 from worker.tasks import run_discovery_loop
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -28,9 +31,11 @@ async def start_research(request: ResearchRequest, user=Depends(get_current_user
             "created_at": datetime.now(timezone.utc).isoformat(),
         }).execute()
     except Exception:
-        # Non-fatal: the discovery loop still runs even if the row can't be
-        # pre-created; the reporter's UPDATE will simply be a no-op.
-        pass
+        # Without the row the reporter's UPDATE is a no-op and its SavedMaterials
+        # insert violates the task_id foreign key, so the run would burn LLM quota
+        # and leave nothing for the user. Refuse to start it.
+        logger.exception("Could not create ResearchTasks row for task %s", task_id)
+        raise HTTPException(status_code=503, detail="Could not record the research task. Please try again.")
 
     task = run_discovery_loop.apply_async(
         args=[request.prompt, task_id, user.id],
