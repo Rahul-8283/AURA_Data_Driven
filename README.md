@@ -11,7 +11,7 @@
 ![Python](https://img.shields.io/badge/python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-managed-DE5FE9?style=for-the-badge&logo=uv&logoColor=white)
 ![Node](https://img.shields.io/badge/node-20.19%2B%20or%2022.12%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-140%20passing-2e7d32?style=for-the-badge&logo=pytest&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-141%20passing-2e7d32?style=for-the-badge&logo=pytest&logoColor=white)
 ![License](https://img.shields.io/badge/license-Apache%202.0-D22128?style=for-the-badge&logo=apache&logoColor=white)
 
 <br/>

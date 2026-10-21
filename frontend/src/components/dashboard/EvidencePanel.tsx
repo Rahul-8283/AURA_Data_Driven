@@ -76,7 +76,7 @@ export default function EvidencePanel() {
       <div style={{
         background: 'var(--surface-raised)',
         border: '1px solid var(--line)',
-        borderRadius: '12px',
+        borderRadius: '6px',
         padding: '1.5rem',
         boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
       }}>
@@ -103,7 +103,7 @@ export default function EvidencePanel() {
               gap: '0.5rem',
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid var(--line)',
-              borderRadius: '8px',
+              borderRadius: '4px',
               padding: '0.5rem 0.9rem',
               color: 'var(--text)',
               fontSize: '0.8rem',
@@ -131,7 +131,7 @@ export default function EvidencePanel() {
           <div style={{
             background: 'rgba(0,0,0,0.25)',
             border: '1px solid var(--line)',
-            borderRadius: '10px',
+            borderRadius: '4px',
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--moss-light)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
@@ -146,7 +146,7 @@ export default function EvidencePanel() {
           <div style={{
             background: 'rgba(0,0,0,0.25)',
             border: '1px solid var(--line)',
-            borderRadius: '10px',
+            borderRadius: '4px',
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--amber)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
@@ -161,7 +161,7 @@ export default function EvidencePanel() {
           <div style={{
             background: 'rgba(0,0,0,0.25)',
             border: '1px solid var(--line)',
-            borderRadius: '10px',
+            borderRadius: '4px',
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--brass-bright)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
@@ -176,7 +176,7 @@ export default function EvidencePanel() {
           <div style={{
             background: 'rgba(0,0,0,0.25)',
             border: '1px solid var(--line)',
-            borderRadius: '10px',
+            borderRadius: '4px',
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--moss)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
@@ -196,7 +196,7 @@ export default function EvidencePanel() {
       <div style={{
         background: 'var(--surface-raised)',
         border: '1px solid var(--line)',
-        borderRadius: '12px',
+        borderRadius: '6px',
         padding: '1.5rem',
         boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
       }}>
@@ -216,7 +216,7 @@ export default function EvidencePanel() {
               alignItems: 'center',
               background: 'var(--canvas-deep)',
               border: '1px solid var(--line)',
-              borderRadius: '8px',
+              borderRadius: '4px',
               padding: '0.6rem 0.9rem',
               gap: '0.5rem'
             }}>
@@ -247,7 +247,7 @@ export default function EvidencePanel() {
                 background: isSyncing ? 'var(--surface-soft)' : 'var(--brass)',
                 color: '#000',
                 border: 'none',
-                borderRadius: '8px',
+                borderRadius: '4px',
                 padding: '0.6rem 1.4rem',
                 fontWeight: 600,
                 fontSize: '0.9rem',
@@ -293,7 +293,7 @@ export default function EvidencePanel() {
                     background: isSelected ? 'rgba(199, 152, 88, 0.2)' : 'rgba(255,255,255,0.03)',
                     border: `1px solid ${isSelected ? 'var(--brass-bright)' : 'var(--line)'}`,
                     color: isSelected ? 'var(--brass-bright)' : 'var(--text-muted)',
-                    borderRadius: '20px',
+                    borderRadius: '4px',
                     padding: '0.25rem 0.75rem',
                     fontSize: '0.78rem',
                     cursor: 'pointer',
@@ -339,7 +339,7 @@ export default function EvidencePanel() {
             marginTop: '1rem',
             background: 'rgba(213, 154, 114, 0.1)',
             padding: '0.6rem 0.9rem',
-            borderRadius: '6px'
+            borderRadius: '4px'
           }}>
             <AlertCircle size={16} />
             {errorMsg}
@@ -352,7 +352,7 @@ export default function EvidencePanel() {
             marginTop: '1.25rem',
             background: 'rgba(0,0,0,0.3)',
             border: `1px solid ${taskStatus.status === 'Complete' ? 'var(--moss)' : taskStatus.status === 'Failed' ? 'var(--danger)' : 'var(--line-strong)'}`,
-            borderRadius: '10px',
+            borderRadius: '4px',
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
@@ -372,7 +372,7 @@ export default function EvidencePanel() {
               <span style={{
                 fontSize: '0.75rem',
                 padding: '0.2rem 0.6rem',
-                borderRadius: '12px',
+                borderRadius: '6px',
                 background: taskStatus.status === 'Complete' ? 'rgba(143, 155, 104, 0.2)' : taskStatus.status === 'Failed' ? 'rgba(213, 154, 114, 0.15)' : 'rgba(199, 152, 88, 0.2)',
                 color: taskStatus.status === 'Complete' ? 'var(--moss-light)' : taskStatus.status === 'Failed' ? 'var(--danger)' : 'var(--brass-bright)',
                 textTransform: 'uppercase',

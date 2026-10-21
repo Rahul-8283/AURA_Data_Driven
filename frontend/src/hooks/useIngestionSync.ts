@@ -22,6 +22,9 @@ function requestErrorMessage(err: unknown): string {
 const fetchStatus = (taskId: string) => (signal: AbortSignal) =>
   api.get<IngestionStatusResponse>(`/api/v1/ingestion/status/${taskId}`, { signal }).then((res) => res.data);
 
+// The server bounds each store at 6s; this is a safety net so the panel can never spin forever.
+const STATS_TIMEOUT_MS = 12_000;
+
 export function useIngestionSync() {
   const [stats, setStats] = useState<KnowledgeStatsResponse | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
@@ -36,7 +39,7 @@ export function useIngestionSync() {
 
   const loadStats = useCallback(async () => {
     try {
-      const { data } = await api.get<KnowledgeStatsResponse>('/api/v1/ingestion/stats');
+      const { data } = await api.get<KnowledgeStatsResponse>('/api/v1/ingestion/stats', { timeout: STATS_TIMEOUT_MS });
       setStats(data);
       setStatsUnavailable(false);
     } catch {
@@ -48,7 +51,7 @@ export function useIngestionSync() {
 
   useEffect(() => {
     let active = true;
-    api.get<KnowledgeStatsResponse>('/api/v1/ingestion/stats')
+    api.get<KnowledgeStatsResponse>('/api/v1/ingestion/stats', { timeout: STATS_TIMEOUT_MS })
       .then(({ data }) => {
         if (!active) return;
         setStats(data);
