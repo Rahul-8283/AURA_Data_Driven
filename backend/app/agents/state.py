@@ -1,5 +1,5 @@
 from typing import TypedDict, List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 class ResearchState(TypedDict):
     # Metadata
@@ -36,7 +36,7 @@ def init_research_state(task_id: str, user_prompt: str, user_id: str = "default_
         "task_id": task_id,
         "user_id": user_id,
         "user_prompt": user_prompt,
-        "start_time": datetime.utcnow(),
+        "start_time": datetime.now(timezone.utc),
         "target_properties": {},
         "base_material_class": "",
         "excluded_elements": [],
@@ -45,6 +45,6 @@ def init_research_state(task_id: str, user_prompt: str, user_id: str = "default_
         "current_population": [],
         "best_candidates": [],
         "generation_history": [],
-        "logs": [f"[{datetime.utcnow().isoformat()}] Initialization complete. Task {task_id} started."],
+        "logs": [f"[{datetime.now(timezone.utc).isoformat()}] Initialization complete. Task {task_id} started."],
         "final_summary": "",
     }

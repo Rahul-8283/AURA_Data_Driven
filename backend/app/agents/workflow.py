@@ -46,5 +46,10 @@ workflow.add_conditional_edges(
 # Connect reporter to the end
 workflow.add_edge("reporter", END)
 
+def recursion_limit(generations: int) -> int:
+    """LangGraph counts every node execution: planner, a mutator and predictor per generation,
+    and the reporter. The margin covers routing steps."""
+    return 2 * generations + 10
+
 # Compile the graph into an executable application
 app_graph = workflow.compile()

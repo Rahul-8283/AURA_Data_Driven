@@ -2,7 +2,10 @@ __pycache__
 *.pyc
 *.pyo
 *.pyd
+.venv
 venv
 env
+.venv.pip-backup
+chroma_data
 .env
 .git

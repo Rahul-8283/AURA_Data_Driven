@@ -1,9 +1,17 @@
 import pytest
+from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
+from app.core.security import get_current_user
 from main import app
 
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def signed_in_user():
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id="user-1")
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 def test_sync_endpoint_triggers_celery_task():
     with patch("worker.tasks.harvest_and_ingest_task.apply_async") as mock_task:
@@ -74,7 +82,8 @@ def test_status_endpoint_returns_success():
         assert data["new_papers_indexed"] == 4
 
 def test_stats_endpoint():
-    with patch("app.api.v1.endpoints.ingestion.init_literature_collection") as mock_col:
+    with patch("app.api.v1.endpoints.ingestion.init_literature_collection") as mock_col, \
+         patch("app.api.v1.endpoints.ingestion.neo4j_conn"):
         mock_c = MagicMock()
         mock_c.count.return_value = 150
         mock_col.return_value = mock_c

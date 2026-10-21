@@ -2,7 +2,7 @@
 
 Counts LLM requests per provider so the free-tier budget can be checked without
 spending quota. Usage (from backend/):
-    .venv/bin/python -m app.scripts.simulate_discovery_run --generations 3
+    uv run python -m app.scripts.simulate_discovery_run --generations 3
 """
 import argparse
 import asyncio
@@ -15,7 +15,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from app.agents.state import init_research_state
-from app.agents.workflow import app_graph
+from app.agents.workflow import app_graph, recursion_limit
 from app.core.config import settings
 
 calls: Counter = Counter()
@@ -67,14 +67,14 @@ def _requests_post(url, **_kwargs):
 async def _run_graph(state: dict, live: bool) -> dict:
     with patch("app.agents.nodes.reporter.supabase_client", MagicMock()):
         if live:
-            return await app_graph.ainvoke(state, config={"recursion_limit": 200})
+            return await app_graph.ainvoke(state, config={"recursion_limit": recursion_limit(settings.GA_GENERATIONS)})
         with patch("app.services.llm.client.get_client", return_value=FakeClient()), \
              patch("app.agents.nodes.planner.requests.post", side_effect=_requests_post), \
              patch("app.services.llm.client.requests.post", side_effect=_requests_post), \
              patch("app.services.retrieval.graph_rag.init_literature_collection", return_value=None), \
              patch("app.services.retrieval.graph_search.neo4j_conn") as neo4j:
             neo4j.get_session.return_value.__enter__.return_value.execute_read.return_value = []
-            return await app_graph.ainvoke(state, config={"recursion_limit": 200})
+            return await app_graph.ainvoke(state, config={"recursion_limit": recursion_limit(settings.GA_GENERATIONS)})
 
 
 async def run(generations: int, live: bool) -> int:

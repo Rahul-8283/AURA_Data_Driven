@@ -1,11 +1,16 @@
 import httpx
 import logging
-import xml.etree.ElementTree as ET
+from defusedxml import ElementTree as ET
 from typing import List
 from app.core.config import settings
-from .base import BaseHarvester, HarvestedDocument
+from .base import BaseHarvester, HarvestedDocument, HarvesterError, build_user_agent
 
 logger = logging.getLogger(__name__)
+
+def element_text(element) -> str:
+    """All text of an element including inline markup. Element.text alone stops at the first child
+    tag, which truncates `LiNi<sub>0.8</sub>Co<sub>0.1</sub>O<sub>2</sub>` to `LiNi`."""
+    return " ".join("".join(element.itertext()).split())
 
 class PubMedHarvester(BaseHarvester):
     def __init__(self):
@@ -13,7 +18,7 @@ class PubMedHarvester(BaseHarvester):
         has_key = bool(settings.NCBI_API_KEY)
         delay = 0.1 if has_key else 0.35
         super().__init__(
-            user_agent=f"AURA-BatteryResearch/1.0 ({settings.CONTACT_EMAIL})",
+            user_agent=build_user_agent(),
             min_delay_seconds=delay
         )
         self.esearch_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
@@ -39,8 +44,7 @@ class PubMedHarvester(BaseHarvester):
             async with httpx.AsyncClient(timeout=20.0) as client:
                 search_resp = await client.get(self.esearch_url, params=search_params, headers=headers)
                 if search_resp.status_code != 200:
-                    logger.warning(f"PubMed esearch failed with status {search_resp.status_code}")
-                    return results
+                    raise HarvesterError(f"PubMed esearch returned status {search_resp.status_code}")
 
                 id_list = search_resp.json().get("esearchresult", {}).get("idlist", [])
                 if not id_list:
@@ -58,8 +62,7 @@ class PubMedHarvester(BaseHarvester):
 
                 fetch_resp = await client.get(self.efetch_url, params=fetch_params, headers=headers)
                 if fetch_resp.status_code != 200:
-                    logger.warning(f"PubMed efetch failed with status {fetch_resp.status_code}")
-                    return results
+                    raise HarvesterError(f"PubMed efetch returned status {fetch_resp.status_code}")
 
                 root = ET.fromstring(fetch_resp.text)
                 for article in root.findall(".//PubmedArticle"):
@@ -70,13 +73,16 @@ class PubMedHarvester(BaseHarvester):
                     if pmid_elem is None or title_elem is None:
                         continue
 
-                    pmid = pmid_elem.text.strip() if pmid_elem.text else ""
-                    title = " ".join(title_elem.text.split()) if title_elem.text else ""
+                    pmid = element_text(pmid_elem)
+                    title = element_text(title_elem)
 
                     abstract_parts = []
                     for ab in abstract_elems:
-                        if ab.text:
-                            abstract_parts.append(ab.text.strip())
+                        part = element_text(ab)
+                        if not part:
+                            continue
+                        label = ab.get("Label")
+                        abstract_parts.append(f"{label}: {part}" if label else part)
                     abstract = " ".join(abstract_parts)
 
                     authors = []
@@ -96,7 +102,10 @@ class PubMedHarvester(BaseHarvester):
                             url=f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/",
                             authors=authors
                         ))
+        except HarvesterError:
+            raise
         except Exception as e:
-            logger.error(f"Error fetching from PubMed: {e}")
+            # Report the exception type only: request errors can embed the URL, which carries the NCBI api_key.
+            raise HarvesterError(f"PubMed request failed ({type(e).__name__})") from e
 
         return results

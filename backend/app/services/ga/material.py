@@ -28,8 +28,9 @@ class BatteryMaterial:
         Handle edge cases where elements have an implicit 1 (e.g., Li means Li: 1.0).
         """
         # Regex: Match a chemical symbol (1 capital + optional lowercase)
-        # followed by an optional amount (integer or decimal)
-        pattern = r"([A-Z][a-z]*)(\d*\.\d+|\d+)?"
+        # followed by an optional amount (integer or decimal, optionally with an
+        # exponent so tiny amounts like 8.4e-05 are never misread as 8.4)
+        pattern = r"([A-Z][a-z]*)((?:\d*\.\d+|\d+)(?:e[-+]?\d+)?)?"
         matches = re.findall(pattern, formula)
         
         composition = {}
@@ -66,19 +67,15 @@ class BatteryMaterial:
         for element, amount in sorted_elements:
             if amount <= 0:
                 continue
-            
-            # Format to remove trailing zeroes for display (e.g. 1.0 -> 1, 0.80 -> 0.8)
-            if amount.is_integer():
-                amount_int = int(amount)
-                if amount_int == 1:
-                    result += element  # Implicit 1
-                else:
-                    result += f"{element}{amount_int}"
-            else:
-                # Use %g or f-string with :g to nicely format floats
-                amount_str = f"{amount:g}"
-                result += f"{element}{amount_str}"
-                
+
+            # Fixed-point, never scientific notation, so the string always re-parses
+            # to the same composition. Amounts below 6 decimals are negligible
+            # (well inside the 0.999-1.001 validation tolerance) and are dropped.
+            amount_str = f"{amount:.6f}".rstrip("0").rstrip(".")
+            if amount_str == "0":
+                continue
+            result += element if amount_str == "1" else f"{element}{amount_str}"
+
         return result
 
     def validate(self):

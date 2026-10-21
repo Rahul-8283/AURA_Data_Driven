@@ -6,9 +6,10 @@ from app.agents.state import ResearchState
 from app.services.ga.material import BatteryMaterial
 from app.services.retrieval.graph_rag import GraphRAGService
 from app.services.llm.client import PredictionResult, predict_properties_batch_async
+from app.services.cache import llm_cache
 from app.services.ga.fitness import calculate_fitness
 
-PREDICTION_CACHE: Dict[str, PredictionResult] = {}
+PREDICTION_CACHE = llm_cache()
 
 def _prediction_query(composition: str) -> str:
     return f"What are the electrochemical properties and degradation modes of {composition}?"
@@ -51,14 +52,22 @@ async def predictor_node(state: ResearchState) -> ResearchState:
         state.setdefault("logs", []).append(f"[{datetime.now(timezone.utc).isoformat()}] Predictor: Population empty. Aborting.")
         return state
 
-    uncached = list(dict.fromkeys(
-        mat["composition"] for mat in current_pop if mat["composition"] not in PREDICTION_CACHE
-    ))
+    # Hold results locally rather than reading them back from the cache, which may expire or evict entries.
+    predictions: Dict[str, PredictionResult] = {}
+    uncached = []
+    for composition in dict.fromkeys(mat["composition"] for mat in current_pop):
+        cached = PREDICTION_CACHE.get(composition)
+        if cached is None:
+            uncached.append(composition)
+        else:
+            predictions[composition] = cached
     if uncached:
-        PREDICTION_CACHE.update(await _predict_uncached(uncached))
+        fresh = await _predict_uncached(uncached)
+        PREDICTION_CACHE.update(fresh)
+        predictions.update(fresh)
 
     for mat in current_pop:
-        _apply_prediction(mat, PREDICTION_CACHE[mat["composition"]])
+        _apply_prediction(mat, predictions[mat["composition"]])
 
     processed_pop = list(current_pop)
     target_properties = state.get("target_properties", {})

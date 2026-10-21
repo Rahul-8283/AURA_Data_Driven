@@ -9,10 +9,11 @@ Multi-agent system that evolves battery cathode/anode/electrolyte compositions: 
 
 ## Commands
 Backend (run from `backend/`; imports are rooted there: `from app...`, `from worker...`):
-- `uvicorn main:app --reload --port 8000`
-- `celery -A app.core.celery_app.celery_app worker --loglevel=info`
+- `uv sync` (once, or after changing dependencies)
+- `uv run uvicorn main:app --reload --port 8000`
+- `uv run celery -A app.core.celery_app.celery_app worker --loglevel=info`
 - `docker compose up -d redis` (local Redis)
-- `pytest`
+- `uv run pytest`
 
 Frontend (run from `frontend/`):
 - `npm run dev` · `npm run build` (`tsc -b && vite build`) · `npm run lint`

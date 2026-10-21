@@ -1,23 +1,18 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { 
-  Database, 
-  BookOpen, 
-  RefreshCw, 
-  Search, 
-  CheckCircle2, 
-  AlertCircle, 
-  Loader2, 
-  Clock, 
-  Share2, 
+import React, { useState } from 'react';
+import {
+  Database,
+  BookOpen,
+  RefreshCw,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Clock,
+  Share2,
   Layers
 } from 'lucide-react';
-import api from '../../lib/api';
-import type { 
-  IngestionSource, 
-  IngestionSyncResponse, 
-  IngestionStatusResponse, 
-  KnowledgeStatsResponse 
-} from '../../types/ingestion';
+import { useIngestionSync } from '../../hooks/useIngestionSync';
+import type { IngestionSource } from '../../types/ingestion';
 
 const SUGGESTED_TOPICS = [
   'Lithium dendrite solid electrolyte interphase',
@@ -27,45 +22,26 @@ const SUGGESTED_TOPICS = [
   'Halide solid electrolytes ionic conductivity'
 ];
 
+const STOP_REASONS: Record<string, string> = {
+  quota_exhausted: 'LLM quota used up; the remaining chunks stay pending for the next run.',
+  llm_unavailable: 'The LLM providers are unavailable; the remaining chunks stay pending.',
+  neo4j_error: 'Neo4j rejected a write; the remaining chunks stay pending.',
+};
+
+const STORE_LABELS: Record<string, string> = { chroma: 'ChromaDB', neo4j: 'Neo4j' };
+
+// null means the store could not be reached, which must not be shown as an empty store
+const formatCount = (value: number | null | undefined, loading: boolean) =>
+  loading ? '...' : value == null ? '\u2014' : value;
+
 export default function EvidencePanel() {
   const [query, setQuery] = useState('');
   const [selectedSources, setSelectedSources] = useState<IngestionSource[]>(['all']);
-  const [stats, setStats] = useState<KnowledgeStatsResponse | null>(null);
-  const [loadingStats, setLoadingStats] = useState(true);
-
-  // Sync task state
-  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
-  const [taskStatus, setTaskStatus] = useState<IngestionStatusResponse | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const fetchStats = async () => {
-    setLoadingStats(true);
-    try {
-      const { data } = await api.get<KnowledgeStatsResponse>('/api/v1/ingestion/stats');
-      setStats(data);
-    } catch {
-      // Fallback if not reachable
-    } finally {
-      setLoadingStats(false);
-    }
-  };
-
-  useEffect(() => {
-    void fetchStats();
-  }, []);
-
-  const stopPolling = () => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-      pollIntervalRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => stopPolling();
-  }, []);
+  const {
+    stats, loadingStats, statsUnavailable, refreshStats,
+    isSyncing, activeTaskId, taskStatus, extractionStatus, errorMsg, startSync,
+  } = useIngestionSync();
+  const unreachableStores = stats ? Object.keys(stats.errors).map((key) => STORE_LABELS[key] ?? key) : [];
 
   const handleToggleSource = (source: IngestionSource) => {
     if (source === 'all') {
@@ -87,50 +63,10 @@ export default function EvidencePanel() {
     }
   };
 
-  const handleStartSync = async (e?: React.FormEvent) => {
+  const handleStartSync = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!query.trim() || isSubmitting) return;
-
-    setIsSubmitting(true);
-    setErrorMsg('');
-    setTaskStatus(null);
-    stopPolling();
-
-    try {
-      const { data } = await api.post<IngestionSyncResponse>('/api/v1/ingestion/sync', {
-        query: query.trim(),
-        sources: selectedSources,
-        max_results: 10
-      });
-
-      setActiveTaskId(data.task_id);
-      setTaskStatus({
-        status: 'In Progress',
-        stage: 'fetching',
-        message: 'Initiated background literature harvester...'
-      });
-
-      // Poll status every 2.5 seconds
-      pollIntervalRef.current = setInterval(async () => {
-        try {
-          const { data: status } = await api.get<IngestionStatusResponse>(`/api/v1/ingestion/status/${data.task_id}`);
-          setTaskStatus(status);
-
-          if (status.status === 'Complete' || status.status === 'Failed') {
-            stopPolling();
-            setIsSubmitting(false);
-            void fetchStats();
-          }
-        } catch {
-          stopPolling();
-          setIsSubmitting(false);
-        }
-      }, 2500);
-
-    } catch (err: any) {
-      setErrorMsg(err.response?.data?.detail || 'Failed to trigger literature sync.');
-      setIsSubmitting(false);
-    }
+    if (!query.trim() || isSyncing) return;
+    void startSync(query.trim(), selectedSources);
   };
 
   return (
@@ -140,7 +76,7 @@ export default function EvidencePanel() {
       <div style={{
         background: 'var(--surface-raised)',
         border: '1px solid var(--line)',
-        borderRadius: '12px',
+        borderRadius: '6px',
         padding: '1.5rem',
         boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
       }}>
@@ -159,7 +95,7 @@ export default function EvidencePanel() {
 
           <button
             type="button"
-            onClick={fetchStats}
+            onClick={refreshStats}
             disabled={loadingStats}
             style={{
               display: 'flex',
@@ -167,7 +103,7 @@ export default function EvidencePanel() {
               gap: '0.5rem',
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid var(--line)',
-              borderRadius: '8px',
+              borderRadius: '4px',
               padding: '0.5rem 0.9rem',
               color: 'var(--text)',
               fontSize: '0.8rem',
@@ -179,6 +115,13 @@ export default function EvidencePanel() {
           </button>
         </div>
 
+        {(statsUnavailable || unreachableStores.length > 0) && (
+          <p style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: '0 0 1rem', color: 'var(--danger)', fontSize: '0.8rem' }}>
+            <AlertCircle size={14} />
+            {statsUnavailable ? 'Knowledge base statistics are unavailable right now.' : `Could not reach: ${unreachableStores.join(', ')}.`}
+          </p>
+        )}
+
         {/* Metric Cards Grid */}
         <div style={{
           display: 'grid',
@@ -188,14 +131,14 @@ export default function EvidencePanel() {
           <div style={{
             background: 'rgba(0,0,0,0.25)',
             border: '1px solid var(--line)',
-            borderRadius: '10px',
+            borderRadius: '4px',
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--moss-light)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
               <BookOpen size={15} /> ChromaDB Vectors
             </div>
             <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--paper)', fontFamily: 'var(--mono)' }}>
-              {loadingStats ? '...' : (stats?.chroma_literature_chunks ?? 0)}
+              {formatCount(stats?.chroma_literature_chunks, loadingStats)}
             </div>
             <small style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>Indexed literature chunks</small>
           </div>
@@ -203,14 +146,14 @@ export default function EvidencePanel() {
           <div style={{
             background: 'rgba(0,0,0,0.25)',
             border: '1px solid var(--line)',
-            borderRadius: '10px',
+            borderRadius: '4px',
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--amber)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
               <Share2 size={15} /> Neo4j Entities
             </div>
             <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--paper)', fontFamily: 'var(--mono)' }}>
-              {loadingStats ? '...' : (stats?.neo4j_nodes ?? 0)}
+              {formatCount(stats?.neo4j_nodes, loadingStats)}
             </div>
             <small style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>Elements, materials, degradation nodes</small>
           </div>
@@ -218,14 +161,14 @@ export default function EvidencePanel() {
           <div style={{
             background: 'rgba(0,0,0,0.25)',
             border: '1px solid var(--line)',
-            borderRadius: '10px',
+            borderRadius: '4px',
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--brass-bright)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
               <Layers size={15} /> Neo4j Relationships
             </div>
             <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--paper)', fontFamily: 'var(--mono)' }}>
-              {loadingStats ? '...' : (stats?.neo4j_relationships ?? 0)}
+              {formatCount(stats?.neo4j_relationships, loadingStats)}
             </div>
             <small style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>Chemical & degradation pathways</small>
           </div>
@@ -233,16 +176,18 @@ export default function EvidencePanel() {
           <div style={{
             background: 'rgba(0,0,0,0.25)',
             border: '1px solid var(--line)',
-            borderRadius: '10px',
+            borderRadius: '4px',
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--moss)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
               <Clock size={15} /> Scheduled Sweep
             </div>
-            <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--moss-light)', marginTop: '0.4rem' }}>
-              Nightly (02:00 UTC)
+            <div style={{ fontSize: '1.05rem', fontWeight: 600, color: stats?.nightly_sweep_enabled ? 'var(--moss-light)' : 'var(--text-dim)', marginTop: '0.4rem' }}>
+              {stats?.nightly_sweep_enabled ? 'Nightly (02:00 UTC)' : 'Off'}
             </div>
-            <small style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>Celery Beat background cron</small>
+            <small style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>
+              {stats?.nightly_sweep_enabled ? 'Needs a running Celery Beat process' : 'Set NIGHTLY_HARVEST_ENABLED to schedule'}
+            </small>
           </div>
         </div>
       </div>
@@ -251,7 +196,7 @@ export default function EvidencePanel() {
       <div style={{
         background: 'var(--surface-raised)',
         border: '1px solid var(--line)',
-        borderRadius: '12px',
+        borderRadius: '6px',
         padding: '1.5rem',
         boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
       }}>
@@ -271,7 +216,7 @@ export default function EvidencePanel() {
               alignItems: 'center',
               background: 'var(--canvas-deep)',
               border: '1px solid var(--line)',
-              borderRadius: '8px',
+              borderRadius: '4px',
               padding: '0.6rem 0.9rem',
               gap: '0.5rem'
             }}>
@@ -294,24 +239,24 @@ export default function EvidencePanel() {
 
             <button
               type="submit"
-              disabled={isSubmitting || !query.trim()}
+              disabled={isSyncing || !query.trim()}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                background: isSubmitting ? 'var(--surface-soft)' : 'var(--brass)',
+                background: isSyncing ? 'var(--surface-soft)' : 'var(--brass)',
                 color: '#000',
                 border: 'none',
-                borderRadius: '8px',
+                borderRadius: '4px',
                 padding: '0.6rem 1.4rem',
                 fontWeight: 600,
                 fontSize: '0.9rem',
-                cursor: (isSubmitting || !query.trim()) ? 'not-allowed' : 'pointer',
+                cursor: (isSyncing || !query.trim()) ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s ease',
-                boxShadow: isSubmitting ? 'none' : '0 4px 14px rgba(199, 152, 88, 0.3)'
+                boxShadow: isSyncing ? 'none' : '0 4px 14px rgba(199, 152, 88, 0.3)'
               }}
             >
-              {isSubmitting ? (
+              {isSyncing ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
                   Syncing…
@@ -348,7 +293,7 @@ export default function EvidencePanel() {
                     background: isSelected ? 'rgba(199, 152, 88, 0.2)' : 'rgba(255,255,255,0.03)',
                     border: `1px solid ${isSelected ? 'var(--brass-bright)' : 'var(--line)'}`,
                     color: isSelected ? 'var(--brass-bright)' : 'var(--text-muted)',
-                    borderRadius: '20px',
+                    borderRadius: '4px',
                     padding: '0.25rem 0.75rem',
                     fontSize: '0.78rem',
                     cursor: 'pointer',
@@ -394,7 +339,7 @@ export default function EvidencePanel() {
             marginTop: '1rem',
             background: 'rgba(213, 154, 114, 0.1)',
             padding: '0.6rem 0.9rem',
-            borderRadius: '6px'
+            borderRadius: '4px'
           }}>
             <AlertCircle size={16} />
             {errorMsg}
@@ -406,8 +351,8 @@ export default function EvidencePanel() {
           <div style={{
             marginTop: '1.25rem',
             background: 'rgba(0,0,0,0.3)',
-            border: `1px solid ${taskStatus.status === 'Complete' ? 'var(--moss)' : 'var(--line-strong)'}`,
-            borderRadius: '10px',
+            border: `1px solid ${taskStatus.status === 'Complete' ? 'var(--moss)' : taskStatus.status === 'Failed' ? 'var(--danger)' : 'var(--line-strong)'}`,
+            borderRadius: '4px',
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
@@ -420,16 +365,16 @@ export default function EvidencePanel() {
                   <Loader2 size={18} className="animate-spin" color="var(--brass-bright)" />
                 )}
                 <strong style={{ fontSize: '0.9rem', color: 'var(--paper)' }}>
-                  {taskStatus.status === 'Complete' ? 'Synchronization Finished' : 'Sync in Progress'}
+                  {taskStatus.status === 'Complete' ? 'Synchronization Finished' : taskStatus.status === 'Failed' ? 'Synchronization Failed' : 'Sync in Progress'}
                 </strong>
               </div>
 
               <span style={{
                 fontSize: '0.75rem',
                 padding: '0.2rem 0.6rem',
-                borderRadius: '12px',
-                background: taskStatus.status === 'Complete' ? 'rgba(143, 155, 104, 0.2)' : 'rgba(199, 152, 88, 0.2)',
-                color: taskStatus.status === 'Complete' ? 'var(--moss-light)' : 'var(--brass-bright)',
+                borderRadius: '6px',
+                background: taskStatus.status === 'Complete' ? 'rgba(143, 155, 104, 0.2)' : taskStatus.status === 'Failed' ? 'rgba(213, 154, 114, 0.15)' : 'rgba(199, 152, 88, 0.2)',
+                color: taskStatus.status === 'Complete' ? 'var(--moss-light)' : taskStatus.status === 'Failed' ? 'var(--danger)' : 'var(--brass-bright)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.04em',
                 fontWeight: 600
@@ -439,7 +384,7 @@ export default function EvidencePanel() {
             </div>
 
             <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-              {taskStatus.message}
+              {taskStatus.status === 'Failed' ? (taskStatus.error ?? taskStatus.message) : taskStatus.message}
             </p>
 
             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-dim)', borderTop: '1px solid var(--line)', paddingTop: '0.6rem' }}>
@@ -450,6 +395,26 @@ export default function EvidencePanel() {
                 <div>Sources: <span style={{ color: 'var(--paper)' }}>{taskStatus.sources.join(', ')}</span></div>
               )}
             </div>
+
+            {taskStatus.source_errors && Object.keys(taskStatus.source_errors).length > 0 && (
+              <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.1rem', color: 'var(--danger)', fontSize: '0.78rem' }}>
+                {Object.entries(taskStatus.source_errors).map(([source, reason]) => (
+                  <li key={source}>{source}: {reason}</li>
+                ))}
+              </ul>
+            )}
+
+            {extractionStatus && (
+              <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--line)', paddingTop: '0.6rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                <strong style={{ color: 'var(--paper)' }}>Graph extraction: </strong>
+                {extractionStatus.status === 'Failed'
+                  ? (extractionStatus.error ?? 'failed')
+                  : extractionStatus.status === 'Complete'
+                    ? `${extractionStatus.triplets_ingested ?? 0} triplets from ${extractionStatus.chunks_extracted ?? 0} chunks, ${extractionStatus.chunks_pending ?? 0} pending.`
+                    : (extractionStatus.message ?? 'in progress...')}
+                {extractionStatus.stopped_reason && ` ${STOP_REASONS[extractionStatus.stopped_reason] ?? extractionStatus.stopped_reason}`}
+              </div>
+            )}
           </div>
         )}
       </div>

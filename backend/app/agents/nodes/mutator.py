@@ -7,6 +7,7 @@ from typing import Dict
 
 from app.agents.state import ResearchState
 from app.core.config import settings
+from app.services.cache import llm_cache
 from app.services.ga.material import BatteryMaterial
 from app.services.ga.operators import doping, substitution, crossover
 from app.services.ga.population import tournament_selection
@@ -20,7 +21,7 @@ TARGET_POPULATION = settings.GA_POPULATION_SIZE
 ELITE_COUNT = 2
 VALIDATION_POOL_FACTOR = 2
 MAX_VALIDATION_ROUNDS = 2
-VERDICT_CACHE: Dict[str, bool] = {}
+VERDICT_CACHE = llm_cache()
 
 def _validation_query(composition: str) -> str:
     return f"Is {composition} a structurally stable battery material, or does it violate fundamental valence rules? Check the structural rules provided."
@@ -52,7 +53,15 @@ def _draw_pool(current_pop: list, excluded_elements: list, size: int, seen: set)
     return pool
 
 async def _validate_pool(pool: list[str]) -> Dict[str, bool]:
-    uncached = [c for c in pool if c not in VERDICT_CACHE]
+    verdicts: Dict[str, bool] = {}
+    uncached = []
+    for composition in pool:
+        cached = VERDICT_CACHE.get(composition)
+        if cached is None:
+            uncached.append(composition)
+        else:
+            verdicts[composition] = cached
+
     if uncached:
         try:
             contexts = [
@@ -63,15 +72,16 @@ async def _validate_pool(pool: list[str]) -> Dict[str, bool]:
                 for c in uncached
             ]
             contexts = await asyncio.gather(*contexts)
-            verdicts = await validate_materials_batch_async(list(zip(uncached, contexts)))
-            VERDICT_CACHE.update(verdicts)
+            fresh = await validate_materials_batch_async(list(zip(uncached, contexts)))
+            VERDICT_CACHE.update(fresh)
+            verdicts.update({c: fresh.get(c, True) for c in uncached})
         except LLMQuotaExceeded:
             raise
         except Exception as e:
             # On error, assume valid so a flaky LLM cannot stall evolution
             logger.warning(f"Batch validation failed, accepting pool unverified: {e}")
             return {c: True for c in pool}
-    return {c: VERDICT_CACHE.get(c, True) for c in pool}
+    return verdicts
 
 async def mutator_node(state: ResearchState) -> ResearchState:
     """
