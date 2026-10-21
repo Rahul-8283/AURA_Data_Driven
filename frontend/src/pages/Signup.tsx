@@ -42,7 +42,7 @@ const Signup = () => {
       if (error) throw error;
       
       // Successfully signed up, redirect to dashboard or login
-      navigate('/dashboard');
+      navigate('/dashboard/discovery');
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : 'Signup failed. Please try again.');
     } finally {

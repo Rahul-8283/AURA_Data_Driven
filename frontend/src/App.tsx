@@ -20,7 +20,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Navigate to="/dashboard/discovery" replace />} />
+          <Route path="/dashboard/:view" element={<Dashboard />} />
           <Route path="/results/:taskId" element={<Suspense fallback={null}><Results /></Suspense>} />
           <Route path="/settings" element={<Settings />} />
         </Route>

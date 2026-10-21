@@ -11,7 +11,7 @@ import {
   Search,
   Settings,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import AuraMark from '../components/shared/AuraMark';
 import { supabase } from '../lib/supabase';
 import ChatInterface from '../components/dashboard/ChatInterface';
@@ -19,6 +19,11 @@ import ReportsPanel from '../components/dashboard/ReportsPanel';
 import EvidencePanel from '../components/dashboard/EvidencePanel';
 
 type WorkspaceView = 'discovery' | 'evidence' | 'reports';
+
+const WORKSPACE_VIEWS: readonly WorkspaceView[] = ['discovery', 'evidence', 'reports'];
+
+const isWorkspaceView = (value: string | undefined): value is WorkspaceView =>
+  WORKSPACE_VIEWS.includes(value as WorkspaceView);
 
 const VIEW_LABELS: Record<WorkspaceView, string> = {
   discovery: 'Discovery space',
@@ -40,10 +45,10 @@ const previewUser: WorkspaceUser = { name: 'Dr. Aria Sen', email: 'aria@aura.loc
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { view } = useParams<{ view: string }>();
   const isLocalPreview = import.meta.env.DEV && !supabase;
   const [user, setUser] = useState<WorkspaceUser | null>(() => isLocalPreview ? previewUser : null);
   const [loading, setLoading] = useState(() => !isLocalPreview);
-  const [activeView, setActiveView] = useState<WorkspaceView>('discovery');
   const previewMode = isLocalPreview;
 
   useEffect(() => {
@@ -91,6 +96,11 @@ const Dashboard = () => {
     await supabase.auth.signOut();
   };
 
+  if (!isWorkspaceView(view)) {
+    return <Navigate to="/dashboard/discovery" replace />;
+  }
+  const activeView = view;
+
   if (loading) {
     return <div className="workspace-loading"><span className="workspace-loading__orb" /> Entering the AURA field…</div>;
   }
@@ -107,21 +117,21 @@ const Dashboard = () => {
           <button
             type="button"
             className={`workspace-nav__item ${activeView === 'discovery' ? 'workspace-nav__item--active' : ''}`}
-            onClick={() => setActiveView('discovery')}
+            onClick={() => navigate('/dashboard/discovery')}
           >
             <MessageSquare size={17} /> Discovery space
           </button>
           <button
             type="button"
             className={`workspace-nav__item ${activeView === 'evidence' ? 'workspace-nav__item--active' : ''}`}
-            onClick={() => setActiveView('evidence')}
+            onClick={() => navigate('/dashboard/evidence')}
           >
             <Database size={17} /> Evidence graph
           </button>
           <button
             type="button"
             className={`workspace-nav__item ${activeView === 'reports' ? 'workspace-nav__item--active' : ''}`}
-            onClick={() => setActiveView('reports')}
+            onClick={() => navigate('/dashboard/reports')}
           >
             <FileText size={17} /> Research reports
           </button>

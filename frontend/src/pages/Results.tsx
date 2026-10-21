@@ -81,7 +81,7 @@ const Results = () => {
     <div className="workspace-shell" style={{ gridTemplateColumns: '1fr' }}>
       <main className="workspace-main">
         <header className="workspace-header">
-          <button type="button" className="workspace-header__icon" onClick={() => navigate('/dashboard')} aria-label="Back to dashboard">
+          <button type="button" className="workspace-header__icon" onClick={() => navigate('/dashboard/discovery')} aria-label="Back to dashboard">
             <ArrowLeft size={18} />
           </button>
           <div className="workspace-breadcrumb"><strong>Research Report</strong></div>
