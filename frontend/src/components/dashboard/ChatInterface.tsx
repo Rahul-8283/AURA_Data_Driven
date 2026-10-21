@@ -74,7 +74,7 @@ function errorText(err: unknown): string {
 export default function ChatInterface() {
   const { user } = useAuth();
   const { startDiscovery } = useDiscoveryTask();
-  const { taskStatus, progress, bestScore } = useResearchStore();
+  const { taskStatus } = useResearchStore();
   const [messages, setMessages] = useState<Message[]>([welcomeMessage()]);
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<ChatMode>('ask');
@@ -256,7 +256,7 @@ export default function ChatInterface() {
         {taskStatus === 'processing' && (
           <div className="flex items-center gap-2 text-[#bdc58e] text-xs px-3 py-2 bg-[#8f9b68]/10 border border-[#8f9b68]/20 rounded-lg max-w-[85%] self-center">
             <Loader2 size={14} className="animate-spin" />
-            <span>Evolving candidates — generation {progress}/20 · best score {bestScore.toFixed(2)}</span>
+            <span>Discovering candidates…</span>
           </div>
         )}
 
