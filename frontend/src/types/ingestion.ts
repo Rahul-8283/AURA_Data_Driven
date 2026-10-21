@@ -23,11 +23,20 @@ export interface IngestionStatusResponse {
   sources?: string[];
   query?: string;
   error?: string;
+  source_errors?: Record<string, string>;
+  extraction_task_id?: string | null;
+  chunks_extracted?: number | null;
+  chunks_pending?: number | null;
+  triplets_ingested?: number | null;
+  stopped_reason?: string | null;
 }
 
 export interface KnowledgeStatsResponse {
-  chroma_literature_chunks: number;
-  neo4j_nodes: number;
-  neo4j_relationships: number;
+  // null means the store could not be reached, which is not the same as empty
+  chroma_literature_chunks: number | null;
+  neo4j_nodes: number | null;
+  neo4j_relationships: number | null;
+  errors: { chroma?: string; neo4j?: string };
   supported_sources: string[];
+  nightly_sweep_enabled: boolean;
 }

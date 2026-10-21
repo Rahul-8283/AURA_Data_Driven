@@ -1,11 +1,11 @@
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
-
 /**
  * Renders a DOM node (the results report) to a multi-page PDF, preserving
  * charts and layout by rasterizing the node rather than re-typesetting it.
  */
 export async function exportReportPdf(node: HTMLElement, fileName: string): Promise<void> {
+  // Loaded on demand: together they are most of the bundle and only needed when a report is exported.
+  const [{ jsPDF }, { default: html2canvas }] = await Promise.all([import('jspdf'), import('html2canvas')]);
+
   const canvas = await html2canvas(node, {
     backgroundColor: '#0a0a0c',
     scale: 2,

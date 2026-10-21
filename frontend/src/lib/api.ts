@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 const isDev = import.meta.env.VITE_MODE === 'development';
 const baseURL = isDev 
   ? (import.meta.env.VITE_API_DEV_URL || 'http://127.0.0.1:8000')
-  : (import.meta.env.VITE_API_PRO_URL || 'https://project_name.onrender.com');
+  : (import.meta.env.VITE_API_PRO_URL || '');  // '' = same origin, e.g. behind a reverse proxy
 
 const api = axios.create({
   baseURL,
