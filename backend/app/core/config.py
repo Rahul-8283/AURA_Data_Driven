@@ -33,7 +33,7 @@ class Settings(BaseSettings):
 
     # Literature Harvesters
     NCBI_API_KEY: str | None = None
-    CONTACT_EMAIL: str = "research@aura.ai"
+    CONTACT_EMAIL: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

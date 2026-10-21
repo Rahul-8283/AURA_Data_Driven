@@ -16,6 +16,7 @@ from app.services.harvesters import (
     LiteratureDeduplicator,
     PubMedHarvester,
     WikipediaHarvester,
+    title_key,
 )
 from app.services.ingestion.chunker import get_chunker
 from app.services.ingestion.upsert import process_and_upsert
@@ -178,7 +179,7 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
             h = harvesters_map.get(src_name)
             if h:
                 try:
-                    docs = await h.search(query, max_results=max_results)
+                    docs = await h.harvest(query, max_results=max_results)
                     all_docs.extend(docs)
                 except Exception as ex:
                     logger.error(f"Harvester {src_name} failed: {ex}")
@@ -210,6 +211,7 @@ def harvest_and_ingest_task(self, query: str, sources: list = None, max_results:
 
         base_meta = {
             "title": doc.title,
+            "title_key": title_key(doc.title),
             "doi": doc.doi,
             "source": doc.source,
             "url": doc.url or "",

@@ -3,7 +3,7 @@ import logging
 import re
 from typing import List
 from app.core.config import settings
-from .base import BaseHarvester, HarvestedDocument
+from .base import BaseHarvester, HarvestedDocument, HarvesterError, build_user_agent
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ def clean_abstract(raw: str) -> str:
 class CrossrefHarvester(BaseHarvester):
     def __init__(self):
         super().__init__(
-            user_agent=f"AURA-BatteryResearch/1.0 (mailto:{settings.CONTACT_EMAIL})",
+            user_agent=build_user_agent(),
             min_delay_seconds=0.2
         )
         self.api_url = "https://api.crossref.org/works"
@@ -33,16 +33,16 @@ class CrossrefHarvester(BaseHarvester):
             "query": f"battery {query}",
             "rows": max_results,
             "filter": "has-abstract:true",
-            "mailto": settings.CONTACT_EMAIL,
             "sort": "relevance",
         }
+        if settings.CONTACT_EMAIL.strip():
+            params["mailto"] = settings.CONTACT_EMAIL.strip()
 
         try:
             async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
                 resp = await client.get(self.api_url, params=params, headers=headers)
                 if resp.status_code != 200:
-                    logger.warning(f"Crossref API returned status {resp.status_code}")
-                    return results
+                    raise HarvesterError(f"Crossref API returned status {resp.status_code}")
 
                 items = resp.json().get("message", {}).get("items", [])
                 for item in items:
@@ -69,7 +69,9 @@ class CrossrefHarvester(BaseHarvester):
                             published_date=str(item.get("created", {}).get("date-time", "")),
                             authors=authors
                         ))
+        except HarvesterError:
+            raise
         except Exception as e:
-            logger.error(f"Error fetching from Crossref: {e}")
+            raise HarvesterError(f"Crossref request failed ({type(e).__name__})") from e
 
         return results

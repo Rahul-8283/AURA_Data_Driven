@@ -1,29 +1,43 @@
 import httpx
 import logging
-import xml.etree.ElementTree as ET
+import re
+from defusedxml import ElementTree as ET
 from typing import List
-from app.core.config import settings
-from .base import BaseHarvester, HarvestedDocument
+from .base import BaseHarvester, HarvestedDocument, HarvesterError, build_user_agent
 
 logger = logging.getLogger(__name__)
 
 ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
+# Materials-science categories where battery research is filed; keeps unrelated physics out.
+ARXIV_CATEGORIES = ("cond-mat.mtrl-sci", "physics.chem-ph", "physics.app-ph")
+MAX_QUERY_TERMS = 8
+
+def build_search_query(query: str) -> str:
+    """AND every term (an unquoted multi-word query would only bind the first word to a field)
+    and restrict to materials categories. Punctuation is dropped so user input cannot alter the query syntax."""
+    terms = re.findall(r"[A-Za-z0-9][A-Za-z0-9.\-]*", query)[:MAX_QUERY_TERMS]
+    if not terms:
+        return ""
+    keywords = " AND ".join(f"all:{term}" for term in terms)
+    categories = " OR ".join(f"cat:{category}" for category in ARXIV_CATEGORIES)
+    return f"({keywords}) AND ({categories})"
 
 class ArxivHarvester(BaseHarvester):
     def __init__(self):
         super().__init__(
-            user_agent=f"AURA-BatteryResearch/1.0 ({settings.CONTACT_EMAIL})",
+            user_agent=build_user_agent(),
             min_delay_seconds=3.0  # Respect arXiv 1 request every 3 seconds policy
         )
         self.api_url = "https://export.arxiv.org/api/query"
 
     async def search(self, query: str, max_results: int = 10) -> List[HarvestedDocument]:
+        search_query = build_search_query(query)
+        if not search_query:
+            return []
+
         await self._throttle()
         results: List[HarvestedDocument] = []
         headers = {"User-Agent": self.user_agent}
-
-        # Focus query on condensed matter materials science & battery topics
-        search_query = f"all:{query}"
         params = {
             "search_query": search_query,
             "start": 0,
@@ -36,8 +50,7 @@ class ArxivHarvester(BaseHarvester):
             async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
                 resp = await client.get(self.api_url, params=params, headers=headers)
                 if resp.status_code != 200:
-                    logger.warning(f"arXiv API returned status {resp.status_code}")
-                    return results
+                    raise HarvesterError(f"arXiv API returned status {resp.status_code}")
 
                 root = ET.fromstring(resp.text)
                 entries = root.findall("atom:entry", ATOM_NS)
@@ -75,7 +88,9 @@ class ArxivHarvester(BaseHarvester):
                             published_date=published,
                             authors=authors
                         ))
+        except HarvesterError:
+            raise
         except Exception as e:
-            logger.error(f"Error fetching from arXiv: {e}")
+            raise HarvesterError(f"arXiv request failed ({type(e).__name__})") from e
 
         return results

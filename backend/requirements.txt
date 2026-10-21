@@ -32,6 +32,7 @@ redis==5.0.7
 # Utility
 requests==2.32.3
 PyMuPDF
+defusedxml==0.7.1
 langchain-text-splitters
 tenacity
 

@@ -2,15 +2,14 @@ import httpx
 import logging
 import urllib.parse
 from typing import List
-from app.core.config import settings
-from .base import BaseHarvester, HarvestedDocument
+from .base import BaseHarvester, HarvestedDocument, HarvesterError, build_user_agent
 
 logger = logging.getLogger(__name__)
 
 class WikipediaHarvester(BaseHarvester):
     def __init__(self):
         super().__init__(
-            user_agent=f"AURA-BatteryResearch/1.0 ({settings.CONTACT_EMAIL})",
+            user_agent=build_user_agent(),
             min_delay_seconds=0.1
         )
         self.search_url = "https://en.wikipedia.org/w/api.php"
@@ -32,8 +31,7 @@ class WikipediaHarvester(BaseHarvester):
                 }
                 resp = await client.get(self.search_url, params=search_params, headers=headers)
                 if resp.status_code != 200:
-                    logger.warning(f"Wikipedia search returned status {resp.status_code}")
-                    return results
+                    raise HarvesterError(f"Wikipedia search returned status {resp.status_code}")
 
                 search_data = resp.json().get("query", {}).get("search", [])
                 for item in search_data:
@@ -57,7 +55,9 @@ class WikipediaHarvester(BaseHarvester):
                                 published_date=s_data.get("timestamp"),
                                 authors=["Wikipedia Contributors"]
                             ))
+        except HarvesterError:
+            raise
         except Exception as e:
-            logger.error(f"Error fetching from Wikipedia: {e}")
+            raise HarvesterError(f"Wikipedia request failed ({type(e).__name__})") from e
 
         return results
