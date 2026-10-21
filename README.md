@@ -11,7 +11,7 @@
 ![Python](https://img.shields.io/badge/python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-managed-DE5FE9?style=for-the-badge&logo=uv&logoColor=white)
 ![Node](https://img.shields.io/badge/node-20.19%2B%20or%2022.12%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-141%20passing-2e7d32?style=for-the-badge&logo=pytest&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-184%20passing-2e7d32?style=for-the-badge&logo=pytest&logoColor=white)
 ![License](https://img.shields.io/badge/license-Apache%202.0-D22128?style=for-the-badge&logo=apache&logoColor=white)
 
 <br/>
@@ -77,6 +77,7 @@ The knowledge loop feeds the discovery loop: harvested literature and mined grap
 - **An automated paper-fetching pipeline** over arXiv, Crossref, PubMed and Wikipedia, with relevance filtering, de-duplication and a quota-aware graph miner.
 - **Quota-aware LLM use.** A full run costs about 42 requests, and a spent quota fails the run with a clear message.
 - **A results dashboard** with an executive summary, material cards, an evolution chart, an interactive knowledge graph and PDF export.
+- **A chat that answers or discovers.** Ask mode answers questions from your harvested papers and the knowledge graph, with cited sources. Discover mode runs the evolutionary search.
 - **Per-user history** in Supabase under row level security.
 
 ---
@@ -884,6 +885,7 @@ erDiagram
         uuid user_id FK
         text role
         text content
+        jsonb metadata
         timestamptz created_at
     }
     LITERATURE_CHUNKS {
@@ -904,6 +906,7 @@ erDiagram
 - Row level security is on for every table. The three user tables scope reads and writes to `auth.uid() = user_id`. `literature_chunks` has no policies, so only the service role can reach it.
 - The backend uses the **service role key**, which bypasses RLS. The frontend uses the **anon key**, which respects it.
 - `ResearchTasks.status` moves from `processing` to `completed` or `failed`. On failure `result_json` holds the reason.
+- `chat_messages.metadata` stores the mode and, for Ask answers, the question, cited sources and graph rules, so history restores them.
 
 ### Neo4j
 
@@ -950,19 +953,77 @@ flowchart TD
     pub --> login["/login"]
     pub --> signup["/signup"]
 
-    prot --> dash["/dashboard"]
+    prot --> dash["/dashboard<br/>redirects to /dashboard/discovery"]
     prot --> res["/results/:taskId<br/>lazy loaded"]
     prot --> set["/settings"]
 
-    dash --> chat["Discovery space<br/>ChatInterface"]
-    dash --> ev["Evidence graph<br/>EvidencePanel"]
-    dash --> rep["Research reports<br/>ReportsPanel"]
+    dash --> chat["/dashboard/discovery<br/>Chat: Ask or Discover"]
+    dash --> ev["/dashboard/evidence<br/>EvidencePanel"]
+    dash --> rep["/dashboard/reports<br/>ReportsPanel"]
 
-    chat -->|"useDiscoveryTask"| poll["Start run, poll every 3s"]
+    chat -->|"Ask: POST /chat/ask"| ans["Grounded answer with sources"]
+    chat -->|"Discover: useDiscoveryTask"| poll["Start run, poll every 3s"]
     poll -->|"on Complete"| res
     ev -->|"useIngestionSync"| ing["Harvest, then follow graph mining"]
     rep -->|"open a run"| res
 ```
+
+### Chat: Ask and Discover
+
+The Discovery space has two modes, switched with the toggle beside the input. **Ask** is the default, and the active mode is always visible.
+
+| Mode | What it does | Cost |
+|---|---|---|
+| **Ask** | Answers a question from the harvested papers and the knowledge graph, with numbered sources and the graph rules used | One LLM request, and none when there is no evidence |
+| **Discover** | Starts the evolutionary search and opens a ranked report | About 42 LLM requests |
+
+```mermaid
+flowchart TD
+    msg(["Message"]) --> cmd{"Starts with<br/>/ask or /discover?"}
+    cmd -->|"yes"| mode{"Mode"}
+    cmd -->|"no"| rule{"Does the text fit<br/>the other mode?"}
+    rule -->|"no"| mode
+    rule -->|"yes"| chip["Ask first:<br/>switch or keep"]
+    chip -->|"switch or keep"| mode
+    mode -->|"Ask"| ask["POST /api/v1/chat/ask"]
+    mode -->|"Discover"| disc["POST /api/v1/research/start"]
+    ask --> ans["Answer with sources and graph rules"]
+    ans --> follow["Search for candidates based on this"]
+    follow --> disc
+    disc --> res["Poll, then results page"]
+```
+
+- A `/discover` or `/ask` prefix forces the mode for that one message.
+- Simple keyword rules compare the text with the selected mode. They only prompt you ("This looks like a design request. Run a discovery instead?"); they never switch silently.
+- Messages are saved with their mode, and answers also keep their sources, so the history restores them.
+
+```mermaid
+sequenceDiagram
+    participant UI as Chat in Ask mode
+    participant API as FastAPI chat ask
+    participant V as pgvector
+    participant G as Neo4j
+    participant R as Redis limiter
+    participant L as LLM
+
+    UI->>API: question with JWT
+    API->>V: nearest literature chunks
+    API->>G: rules for the entities in the question
+    alt nothing relevant found
+        API-->>UI: ungrounded reply, no sources, no LLM call
+    else evidence found
+        API->>R: count one use for today
+        alt over the daily limit
+            API-->>UI: 429 with the limit
+        else allowed
+            API->>L: answer from the numbered context only
+            L-->>API: answer or INSUFFICIENT_EVIDENCE
+            API-->>UI: answer, sources and rules
+        end
+    end
+```
+
+The answer prompt tells the model to use only the numbered context, to cite `[S1]` and `[R1]` style references, to treat the context as untrusted text, and to reply `INSUFFICIENT_EVIDENCE` when the context cannot answer. A chunk counts as evidence when its cosine distance is at most `ASK_MAX_DISTANCE` (0.75). On the live store, on-topic questions measured about 0.36 to 0.68 and off-topic ones 0.87 and above.
 
 ### Evidence panel
 
@@ -1024,10 +1085,11 @@ sequenceDiagram
 
 | Area | Practice |
 |---|---|
-| Authentication | `POST /research/start`, every `/ingestion` route, `/test-celery` and `/task/{id}` require a valid Supabase JWT |
+| Authentication | `POST /research/start`, `POST /chat/ask`, `POST /rag/query`, every `/ingestion` route, `/test-celery` and `/task/{id}` require a valid Supabase JWT |
 | Authorization | Row level security on every table, scoped to `auth.uid()` |
 | Secrets | Backend `.env` only. Keys never reach the browser |
 | Keys in transit | The Gemini key travels in the `x-goog-api-key` header, never in a URL, so it cannot leak through logs |
+| LLM spend | Ask answers are limited per user per day (`ASK_DAILY_LIMIT`), and a question with no evidence never calls the LLM |
 | Error responses | Health and RAG errors are generic. Provider and source failures report status or type, never URLs |
 | Ingestion input | Sources are a closed set, queries are trimmed and capped at 200 characters, and results per source are capped at 50 |
 | Harvested content | Relevance-filtered before indexing. XML from arXiv and PubMed is parsed with `defusedxml` |
@@ -1155,7 +1217,8 @@ For a first real run, set `GA_GENERATIONS=3` in `backend/.env`. A discovery then
 
 1. Sign up, then open the dashboard.
 2. Open **Evidence graph**, enter a topic such as "cobalt-free cathode doping", and harvest literature.
-3. Open **Discovery space** and describe the material you want. You are redirected to the results page when the run finishes.
+3. Open **Discovery space**. In **Ask** mode, the default, type a question such as "What do the papers say about LFP cycle life?" and read the answer with its sources.
+4. Switch to **Discover**, or start a message with `/discover`, and describe the material you want. You are redirected to the results page when the run finishes.
 
 ---
 
@@ -1171,7 +1234,8 @@ All routes are mounted under `/api/v1`.
 | `GET` | `/task/{task_id}` | JWT | Raw Celery task state |
 | `POST` | `/research/start` | JWT | Start a discovery run. Body `{ "prompt": "..." }` |
 | `GET` | `/research/status/{task_id}` | none | Progress, final report or failure reason |
-| `POST` | `/rag/query` | none | GraphRAG answer for a chemistry question |
+| `POST` | `/chat/ask` | JWT | Grounded answer from the literature and graph. Body `{ "question": "..." }` |
+| `POST` | `/rag/query` | JWT | Raw GraphRAG context and an LLM rewrite for a chemistry question |
 | `GET` | `/graph/material/{material_name}` | none | `{ nodes, links }` graph for a formula |
 | `POST` | `/ingestion/sync` | JWT | Start a harvest. Body `{ query, sources, max_results }` |
 | `GET` | `/ingestion/status/{task_id}` | JWT | Progress of a harvest or of the graph mining it queued |
@@ -1197,6 +1261,20 @@ All routes are mounted under `/api/v1`.
 | Complete (graph mining) | `chunks_extracted`, `chunks_pending`, `triplets_ingested`, `stopped_reason` |
 | Failed | `error` |
 
+### Ask request and response
+
+`POST /chat/ask` takes a `question` of 3 to 1000 characters.
+
+| Field | Meaning |
+|---|---|
+| `answer` | The grounded answer, or a standard "not enough evidence" message |
+| `grounded` | `false` when no evidence was found or the model judged it insufficient |
+| `sources` | Numbered `S1`, `S2`, ...: `title`, `doi`, `url`, `source`, `snippet`, `distance` |
+| `graph_rules` | Knowledge-graph rules used, such as `NMC811 CAN_BE_DOPED_WITH Mg` |
+| `remaining_today` | Answers left today, or `null` when none was counted |
+
+Errors: `429` when the daily limit is used up, `503` when the LLM quota is spent or the model or literature search is unavailable, and `422` for an invalid question.
+
 ### Example
 
 ```bash
@@ -1207,6 +1285,11 @@ curl -X POST http://localhost:8000/api/v1/research/start \
 
 # Poll it
 curl http://localhost:8000/api/v1/research/status/<task_id>
+
+# Ask a question grounded in your harvested papers
+curl -X POST http://localhost:8000/api/v1/chat/ask \
+  -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
+  -d '{"question": "What do the papers say about LFP cathode cycle life?"}'
 
 # Explore the chemistry behind a candidate
 curl "http://localhost:8000/api/v1/graph/material/LiNi0.5Mn0.5O2"
@@ -1234,6 +1317,8 @@ curl "http://localhost:8000/api/v1/graph/material/LiNi0.5Mn0.5O2"
 | `GRAPH_EXTRACTION_MAX_CALLS` | no | `10` | LLM requests per graph-mining run |
 | `GRAPH_EXTRACTION_GROUP_SIZE` | no | `4` | Chunks sent per LLM request |
 | `NIGHTLY_HARVEST_ENABLED` | no | `false` | Registers the 02:00 UTC sweep. Needs `celery beat` |
+| `ASK_DAILY_LIMIT` | no | `30` | Grounded Ask answers per user per UTC day |
+| `ASK_MAX_DISTANCE` | no | `0.75` | Cosine distance above which a literature chunk is not treated as evidence |
 | `LLM_CACHE_TTL_SECONDS` | no | `3600` | Lifetime of cached predictions and verdicts |
 | `LLM_CACHE_MAX_ENTRIES` | no | `5000` | Size bound of each cache |
 | `DATABASE_URL` | no | | Only for the legacy `setup_chat_table.py` script |
@@ -1267,6 +1352,7 @@ uv run pytest tests/test_ingestion_pipeline.py -v
 | `test_harvesters.py`, `test_harvester_quality.py` | Source parsing, formula preservation, query building, relevance, de-duplication |
 | `test_ingestion_pipeline.py`, `test_ingestion_api.py` | Harvest task, incremental graph mining, nightly sweep, stats |
 | `test_api_hardening.py` | Authentication, input validation, error hygiene |
+| `test_chat_ask.py` | Ask endpoint branches, source grouping, the daily limiter, the answer prompt, graph rules |
 | `test_runtime_robustness.py` | Cache expiry, recursion limit, long runs |
 | `test_reporter_phase8.py` | Reporter and graph construction |
 
@@ -1281,6 +1367,12 @@ uv run python -m app.scripts.verify_ingestion_pipeline
 
 # The same discovery graph against the real services (spends quota)
 uv run python -m app.scripts.simulate_discovery_run --generations 2 --live
+
+# The Ask endpoint against the live store, graph, limiter and LLM (one LLM request)
+uv run python -m app.scripts.verify_chat_ask
+
+# POST /research/start against the real database, with queueing replaced (no quota, cleans up)
+uv run python -m app.scripts.verify_chat_discover
 ```
 
 Frontend:
@@ -1335,7 +1427,7 @@ AURA_Data_Driven/
 │   │   ├── core/                    # config, JWT auth, Celery app and beat schedule
 │   │   ├── db/                      # Supabase and Neo4j clients, literature store, Neo4j constraints
 │   │   ├── api/v1/
-│   │   │   ├── endpoints/           # health, research, rag, graph, ingestion
+│   │   │   ├── endpoints/           # health, research, chat, rag, graph, ingestion
 │   │   │   │                        # analysis.py and strategy.py are empty placeholders
 │   │   │   └── router.py
 │   │   ├── agents/
@@ -1350,6 +1442,7 @@ AURA_Data_Driven/
 │   │   │   ├── retrieval/           # vector, graph, GraphRAG fusion
 │   │   │   ├── llm/                 # client (batched calls) and error types
 │   │   │   ├── cache.py             # bounded expiring caches for LLM results
+│   │   │   ├── rate_limit.py        # per-user daily limit in Redis
 │   │   │   └── embeddings.py        # local ONNX embedding function
 │   │   ├── models/                  # Pydantic schemas
 │   │   └── scripts/                 # seeding, PDF ingestion, simulators, manual checks
@@ -1368,10 +1461,10 @@ AURA_Data_Driven/
 │   │   ├── pages/                   # Landing, Login, Signup, Dashboard, Results, Settings
 │   │   ├── components/              # landing, dashboard (Chat, Evidence, Reports), results, shared
 │   │   ├── hooks/                   # useDiscoveryTask, useIngestionSync
-│   │   ├── lib/                     # api, supabase, pollIngestionTask, PDF export, baseline
+│   │   ├── lib/                     # api, supabase, pollIngestionTask, chatIntent, PDF export, baseline
 │   │   ├── store/                   # Zustand research store
 │   │   ├── contexts/                # auth context
-│   │   └── types/                   # research and ingestion types
+│   │   └── types/                   # research, ingestion and chat types
 │   └── tests/                       # polling tests
 ├── docs/                            # PRD, TRD, GA design
 ├── phases/                          # phase_0 to phase_8 build plan
@@ -1399,6 +1492,9 @@ AURA_Data_Driven/
 | Nightly sweep never runs | It is off by default and needs its own process | Set `NIGHTLY_HARVEST_ENABLED=true` and run `celery beat` |
 | Neo4j `Unable to retrieve routing information` | The Aura instance is paused or restarting | Resume it in the Aura console and use the `neo4j+s://` URI |
 | "Research reports" empty or database errors | Supabase tables are missing | Run `backend/supabase/schema.sql` |
+| Ask replies that it lacks evidence | No harvested chunk is close enough to the question | Harvest papers on the topic from the Evidence tab, or rephrase the question |
+| Ask returns HTTP 429 | `ASK_DAILY_LIMIT` answers used for today (UTC) | Wait for the day to roll over, use Discover, or raise the limit |
+| Ask returns HTTP 503 with a quota message | The OpenRouter free tier is spent and Gemini also failed | Wait for the 00:00 UTC reset or add OpenRouter credit |
 | Literature search or Evidence stats report a pgvector error | The `vector` extension, `literature_chunks` table or `match_literature_chunks` function is missing | Run `backend/supabase/schema.sql` in the Supabase SQL editor |
 | Browser CORS error against a deployed API | The origin is not allow-listed | Add it in `backend/main.py` |
 | `uv run pytest` cannot import `app` | Running from outside `backend/` | Run from `backend/`, where `pyproject.toml` sets the import path |
@@ -1407,13 +1503,14 @@ AURA_Data_Driven/
 
 ## Known limitations
 
-- `GET /research/status`, `/graph/material` and `/rag/query` are unauthenticated. Task IDs are unguessable, but these should sit behind authentication before wide exposure.
+- `GET /research/status` and `/graph/material` are unauthenticated. Task IDs are unguessable, but these should sit behind authentication before wide exposure.
 - Redis TLS uses `ssl.CERT_NONE`, so the broker certificate is not verified. Switch to `CERT_REQUIRED` for strict verification.
 - Harvesting reads titles and abstracts or summaries only. Full-text PDFs are ingested separately through `ingest_papers`.
 - Graph triplets are extracted by an LLM and are not human-verified. Provenance is not stored on graph edges, so a bad fact cannot yet be traced back to its source paper.
 - The relevance gate is keyword-based. It removes clearly off-topic content but is not a semantic classifier.
 - Literature vectors share the Supabase project's database and storage quota, so a very large corpus eventually needs a larger plan.
 - A discovery run uses about 42 LLM requests, which is most of the free-tier daily quota.
+- Ask answers use only the harvested literature and the graph, so a topic with no harvested papers gets no answer until some are added. The mode suggestions are keyword rules and can miss unusual phrasing.
 - CORS allows only the local development origin until you add your own.
 - `analysis.py` and `strategy.py` under `app/api/v1/endpoints/` are empty placeholders, and the Docker files are unmaintained placeholders.
 

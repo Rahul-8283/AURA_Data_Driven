@@ -20,6 +20,7 @@ Frontend (run from `frontend/`):
 
 ## Architecture
 - Long-running work is async: `POST /api/v1/research/start` enqueues a Celery task and returns a `task_id`; the frontend polls `GET /api/v1/research/status/{task_id}`; results at `.../results/{task_id}`.
+- Chat has two modes. Ask: `POST /api/v1/chat/ask` (JWT) retrieves pgvector chunks and Neo4j rules, answers with one LLM request using only that context, and returns sources; no evidence means no LLM call; limited per user by `ASK_DAILY_LIMIT`. Discover: the existing `/research/start` flow. The frontend suggests a mode but never switches silently (`frontend/src/lib/chatIntent.ts`).
 - LangGraph pipeline (`app/agents/`): planner → mutator (GA) → validator (GraphRAG) → predictor (LLM) → fitness/loop → reporter. State is `ResearchState` in `app/agents/state.py`; graph is wired in `app/agents/workflow.py`.
 - Services in `app/services/`: `ingestion`, `embeddings.py`, `retrieval` (vector, graph, `graph_rag.py` fusion), `graph` (extractor, Neo4j ingestion), `ga` (material, operators, population, fitness), `llm` (OpenRouter client).
 - DB clients in `app/db/`; settings in `app/core/config.py` (pydantic-settings, reads `backend/.env`; see `.env.example`).
