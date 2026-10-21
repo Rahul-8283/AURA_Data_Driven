@@ -2,7 +2,7 @@
 
 Harvesters and the LLM are faked, so it needs no network and spends no quota. It checks the
 assumptions the unit tests' fake collection makes about Chroma itself. Usage (from backend/):
-    .venv/bin/python -m app.scripts.verify_ingestion_pipeline
+    uv run python -m app.scripts.verify_ingestion_pipeline
 """
 import sys
 from types import SimpleNamespace

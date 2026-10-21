@@ -2,7 +2,7 @@
 
 Counts LLM requests per provider so the free-tier budget can be checked without
 spending quota. Usage (from backend/):
-    .venv/bin/python -m app.scripts.simulate_discovery_run --generations 3
+    uv run python -m app.scripts.simulate_discovery_run --generations 3
 """
 import argparse
 import asyncio

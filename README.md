@@ -257,7 +257,10 @@ AURA_Data_Driven/
 │   ├── supabase/
 │   │   └── schema.sql               # Reference DDL for ResearchTasks/SavedMaterials/chat_messages
 │   ├── main.py                      # FastAPI app entry + lifespan + CORS
-│   ├── requirements.txt
+│   ├── pyproject.toml              # Dependencies (source of truth)
+│   ├── uv.lock                     # Locked versions, committed
+│   ├── .python-version
+│   ├── requirements.txt            # Generated export for non-uv tooling
 │   ├── .env.example
 │   └── docker-compose.yml           # Optional containerized Redis for local dev
 │
@@ -315,7 +318,7 @@ AURA_Data_Driven/
 ## 🚀 Getting Started
 
 ### Prerequisites
-- **Python 3.12** (backend)
+- **Python 3.12** and **[uv](https://docs.astral.sh/uv/getting-started/installation/)** (backend)
 - **Node.js 18+** (frontend)
 - **Redis** running locally on port 6379
 - **Neo4j** running locally on port 7687
@@ -365,12 +368,9 @@ Open a terminal and run from the project root:
 ```bash
 cd AURA_Data_Driven/backend
 
-# Create and activate a virtual environment
-python3.12 -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-
-# Install Python dependencies
-pip install -r requirements.txt
+# Create the virtual environment and install the locked dependencies.
+# uv reads .python-version (3.12) and uv.lock, so everyone gets identical versions.
+uv sync
 
 # Copy and fill in environment variables
 cp .env.example .env
@@ -384,20 +384,20 @@ cp .env.example .env
 # — run backend/supabase/schema.sql once in the Supabase SQL editor
 
 # Set up Neo4j constraints
-python -m app.db.neo4j_setup
+uv run python -m app.db.neo4j_setup
 
 # Seed ground-truth chemistry knowledge graph
-python -m app.scripts.seed_neo4j
+uv run python -m app.scripts.seed_neo4j
 ```
 
 ---
 
 ### Step 4 — Start the FastAPI Server
 
-In `backend/` with the venv active:
+In `backend/`:
 
 ```bash
-uvicorn main:app --reload --port 8000
+uv run uvicorn main:app --reload --port 8000
 ```
 
 API is available at `http://localhost:8000`
@@ -407,10 +407,10 @@ Interactive docs: `http://localhost:8000/docs`
 
 ### Step 5 — Start the Celery Worker
 
-Open a **second terminal** in `backend/` with the venv active:
+Open a **second terminal** in `backend/`:
 
 ```bash
-celery -A app.core.celery_app.celery_app worker --loglevel=info
+uv run celery -A app.core.celery_app.celery_app worker --loglevel=info
 ```
 
 The worker picks up long-running discovery tasks queued by the API.
@@ -657,13 +657,13 @@ graph TD
 
 ```bash
 cd backend
-pytest                                          # Run all tests
-pytest -v                                       # Verbose output
-pytest tests/test_reporter_phase8.py -v         # Phase 8 reporter + graph endpoint tests
-pytest tests/test_ga_phase5.py -k "material"    # Specific test
+uv run pytest                                          # Run all tests
+uv run pytest -v                                       # Verbose output
+uv run pytest tests/test_reporter_phase8.py -v         # Phase 8 reporter + graph endpoint tests
+uv run pytest tests/test_ga_phase5.py -k "material"    # Specific test
 
 # Coverage
-pytest --cov=app --cov-report=html
+uv run pytest --cov=app --cov-report=html
 ```
 
 ```bash
