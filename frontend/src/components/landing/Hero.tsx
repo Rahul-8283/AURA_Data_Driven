@@ -5,9 +5,9 @@ import { motion } from 'framer-motion';
 import AuraMark from '../shared/AuraMark';
 
 const navItems = [
-  { label: 'Intelligence', href: '#intelligence' },
-  { label: 'Workflow', href: '#workflow' },
-  { label: 'Research notes', href: '#research-notes' },
+  { label: 'What it does', href: '#intelligence' },
+  { label: 'How it works', href: '#workflow' },
+  { label: 'Get started', href: '#research-notes' },
 ];
 
 const Hero = () => {
@@ -50,29 +50,29 @@ const Hero = () => {
             {navItems.map((item) => (
               <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</a>
             ))}
-            <Link to="/login" onClick={() => setMenuOpen(false)}>Enter research space</Link>
+            <Link to="/login" onClick={() => setMenuOpen(false)}>Enter AURA</Link>
           </nav>
         )}
 
         <div className="hero-grid">
           <div className="hero-copy">
-            <div className="eyebrow"> Autonomous materials discovery</div>
-            <h1>Make the next <em>breakthrough</em> feel inevitable.</h1>
+            <div className="eyebrow">Battery materials research</div>
+            <h1>Find the next battery material, <em>with the evidence</em> attached.</h1>
             <p className="hero-copy__lede">
-              AURA turns battery-material research into a living field of possibilities grounded in literature,
-              shaped by chemistry, and focused on what is worth making next.
+              Ask a question and get an answer drawn from battery papers, with every source cited. Or describe a
+              target and let AURA evolve and rank new cathode compositions, checked against literature and chemistry rules.
             </p>
 
             <div className="hero-actions">
               <Link to="/login" className="button button--primary">Start a discovery <ArrowRight size={17} /></Link>
-              <a href="#workflow" className="button button--ghost">See the method</a>
+              <a href="#workflow" className="button button--ghost">How it works</a>
             </div>
 
             <div className="hero-proof">
               <div className="hero-proof__avatars" aria-hidden="true">
-                <span>Li</span><span>Ni</span><span>Mn</span><span>Co</span>
+                <span>Li</span><span>Ni</span><span>Mn</span><span>Ti</span>
               </div>
-              <p><strong>Built for the laboratory.</strong> Traceable reasoning from question to candidate.</p>
+              <p><strong>Two modes, one evidence base.</strong> Ask cites its sources. Discover shows why each candidate ranks.</p>
             </div>
           </div>
 
@@ -85,20 +85,20 @@ const Hero = () => {
 
             <div className="material-console">
               <div className="material-console__topline">
-                <span><i /> Live discovery field</span>
-                <span>GEN 08 / 20</span>
+                <span><i /> Example discovery run</span>
+                <span>5 GENERATIONS</span>
               </div>
 
               <div className="material-console__core">
-                <span className="material-console__label">Highest-scoring composition</span>
-                <div className="material-formula">LiNi<sub>0.82</sub>Mn<sub>0.10</sub>Co<sub>0.08</sub>O<sub>2</sub></div>
-                <p>Layered nickel-rich cathode · validated against 43 research signals</p>
+                <span className="material-console__label">Top-ranked candidate</span>
+                <div className="material-formula">LiAl<sub>0.068</sub>Mn<sub>0.109</sub>Ni<sub>0.8</sub>Ti<sub>0.023</sub>O<sub>2</sub></div>
+                <p>Cobalt-free layered cathode, scored against the NMC811 baseline</p>
               </div>
 
               <div className="material-console__signal-grid">
-                <div><span>Capacity</span><strong>224 <small>mAh/g</small></strong></div>
-                <div><span>Cycle retention</span><strong>91 <small>%</small></strong></div>
-                <div><span>Confidence</span><strong>0.87</strong></div>
+                <div><span>Capacity</span><strong>205 <small>mAh/g</small></strong></div>
+                <div><span>Cycle life</span><strong>2,200 <small>cycles</small></strong></div>
+                <div><span>Cost</span><strong>$28.5 <small>/kg</small></strong></div>
               </div>
 
               <div className="material-console__trail" aria-hidden="true">
@@ -110,18 +110,18 @@ const Hero = () => {
             </div>
 
             <div className="hero-insight-card">
-              <span className="hero-insight-card__eyebrow">AURA insight</span>
-              <p>Mg doping may temper cation mixing at high voltage.</p>
-              <span className="hero-insight-card__source">6 corroborating sources</span>
+              <span className="hero-insight-card__eyebrow">Ask mode</span>
+              <p>Answers cite the papers and graph rules they use, and say so when evidence is missing.</p>
+              <span className="hero-insight-card__source">Cited sources [S1] [S2]</span>
             </div>
           </div>
         </div>
 
         <div className="hero-marquee" aria-label="AURA capabilities">
-          <span>Graph-grounded reasoning</span><i />
-          <span>Candidate evolution</span><i />
-          <span>Evidence-first predictions</span><i />
-          <span>Lab-ready reports</span>
+          <span>arXiv and Crossref</span><i />
+          <span>PubMed and Wikipedia</span><i />
+          <span>Knowledge-graph rules</span><i />
+          <span>PDF reports</span>
         </div>
       </div>
     </motion.section>

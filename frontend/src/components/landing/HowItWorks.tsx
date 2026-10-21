@@ -2,10 +2,10 @@ import { ArrowRight, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const steps = [
-  { number: '01', name: 'Frame the question', detail: 'Set your battery component, target performance, cost range, and operating constraints in plain language.' },
-  { number: '02', name: 'Grow the possibility space', detail: 'AURA seeds known materials, then explores substitutions, doping, and ratio changes through chemistry-aware mutations.' },
-  { number: '03', name: 'Filter with evidence', detail: 'GraphRAG checks each possibility against literature, material relationships, and known structural constraints.' },
-  { number: '04', name: 'Choose what earns a synthesis', detail: 'Review a ranked, explainable shortlist with predicted electrochemical properties and research provenance.' },
+  { number: '01', name: 'Frame the question', detail: 'Set the component, the performance target, the cost ceiling and any elements to exclude, in plain language.' },
+  { number: '02', name: 'Grow the possibility space', detail: 'Start from known materials, then dope, substitute and recombine them over several generations.' },
+  { number: '03', name: 'Filter with evidence', detail: 'Each new composition is validated against the knowledge graph, and its prediction uses literature context.' },
+  { number: '04', name: 'Choose what earns a synthesis', detail: 'Review ranked candidates with predicted properties, scores and a PDF report you can share with your team.' },
 ];
 
 const HowItWorks = () => (
@@ -19,9 +19,9 @@ const HowItWorks = () => (
   >
     <div className="site-frame">
       <div className="section-heading workflow-heading">
-        <span className="section-kicker">A considered process</span>
-        <h2>From a hunch to a<br /><em>credible direction.</em></h2>
-        <p>Human curiosity starts the work. AURA makes sure the next move is informed, inspectable, and worth the lab time.</p>
+        <span className="section-kicker">How it works</span>
+        <h2>From a target to a<br /><em>ranked shortlist.</em></h2>
+        <p>Every step leaves a trace, so you can check why a composition made the list before it is worth lab time.</p>
       </div>
 
       <div className="workflow-layout">
@@ -39,12 +39,12 @@ const HowItWorks = () => (
         </div>
 
         <aside className="workflow-aside">
-          <span className="workflow-aside__eyebrow">Always in the loop</span>
-          <div className="workflow-aside__metric"><strong>43</strong><span>evidence signals<br />on a single candidate</span></div>
+          <span className="workflow-aside__eyebrow">Per run</span>
+          <div className="workflow-aside__metric"><strong>42</strong><span>LLM requests in a<br />full discovery run</span></div>
           <ul>
-            <li><Check size={14} /> No black-box recommendation</li>
-            <li><Check size={14} /> No chemistry-free mutation</li>
-            <li><Check size={14} /> No dead-end research trail</li>
+            <li><Check size={14} /> Excluded elements never enter a candidate</li>
+            <li><Check size={14} /> Answers use only the retrieved context</li>
+            <li><Check size={14} /> No silent zero scores when the LLM fails</li>
           </ul>
           <span className="workflow-aside__glow" aria-hidden="true" />
         </aside>

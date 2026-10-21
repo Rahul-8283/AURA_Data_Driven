@@ -35,8 +35,8 @@ const LandingPage = () => {
           <AuraMark compact />
           <p>Autonomous Unified Research Assistant for Battery Materials Discovery.</p>
           <div className="site-footer__links">
-            <a href="#intelligence">Intelligence <ArrowUpRight size={14} /></a>
-            <Link to="/login">Research space <ArrowUpRight size={14} /></Link>
+            <a href="#intelligence">What it does <ArrowUpRight size={14} /></a>
+            <Link to="/login">Enter AURA <ArrowUpRight size={14} /></Link>
           </div>
         </div>
       </footer>

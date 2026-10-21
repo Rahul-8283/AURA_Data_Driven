@@ -14,13 +14,13 @@ const CallToAction = () => (
     <div className="site-frame">
       <div className="cta-card">
         <div className="cta-card__content">
-          <span className="section-kicker">The next material is waiting</span>
-          <h2>Give your best questions<br />a more powerful <em>next step.</em></h2>
-          <p>Open an AURA research space and turn a battery-material requirement into a path your team can evaluate with confidence.</p>
+          <span className="section-kicker">Get started</span>
+          <h2>Ask the literature, or<br /><em>search for the next material.</em></h2>
+          <p>Create an account to ask questions over the harvested papers or start a discovery run for a target you describe. Your runs and reports stay private to your account.</p>
           <Link to="/login" className="button button--light">Enter AURA <ArrowRight size={17} /></Link>
         </div>
         <div className="cta-card__annotation" aria-hidden="true">
-          <span>EXPLORE</span><i /><span>VALIDATE</span><i /><span>DISCOVER</span>
+          <span>ASK</span><i /><span>DISCOVER</span><i /><span>REPORT</span>
         </div>
       </div>
     </div>

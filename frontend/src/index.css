@@ -402,7 +402,7 @@ input:focus-visible {
   margin: 19px 0 24px;
   color: var(--paper);
   font-family: var(--heading);
-  font-size: clamp(3.45rem, 6vw, 6.15rem);
+  font-size: clamp(2.6rem, 4.6vw, 4.2rem);
   font-weight: 600;
   letter-spacing: -.09em;
   line-height: .94;
@@ -1177,7 +1177,6 @@ input:focus-visible {
 
 .cta-card {
   position: relative;
-  min-height: 430px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
@@ -1186,32 +1185,11 @@ input:focus-visible {
   backdrop-filter: blur(24px);
 }
 
-.cta-card::before {
-  position: absolute;
-  top: 22px;
-  right: 22px;
-  bottom: 22px;
-  left: 43%;
-  content: "";
-  border: 1px solid rgba(189, 197, 142, .25);
-  border-radius: 12px;
-}
-
-.cta-card::after {
-  position: absolute;
-  top: 0;
-  right: 18%;
-  width: 1px;
-  height: 100%;
-  content: "";
-  background: rgba(199, 152, 88, .26);
-}
-
 .cta-card__content {
   position: relative;
   z-index: 1;
-  max-width: 765px;
-  padding: 68px;
+  max-width: 760px;
+  padding: 64px 64px 36px;
 }
 
 .cta-card h2 {
@@ -1228,13 +1206,10 @@ input:focus-visible {
 }
 
 .cta-card__annotation {
-  position: absolute;
-  z-index: 1;
-  right: 35px;
-  bottom: 25px;
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 0 64px 36px;
   color: rgba(235, 226, 206, .62);
   font-family: var(--mono);
   font-size: .53rem;
@@ -2666,7 +2641,7 @@ input:focus-visible {
   }
 
   .hero-copy h1 {
-    font-size: clamp(3.05rem, 14.5vw, 4.45rem);
+    font-size: clamp(2.3rem, 8.4vw, 3.1rem);
   }
 
   .hero-stage {

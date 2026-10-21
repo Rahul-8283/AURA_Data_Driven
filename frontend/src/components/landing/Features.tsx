@@ -5,20 +5,20 @@ const features = [
   {
     icon: FlaskConical,
     number: '01',
-    title: 'Chemistry-native exploration',
-    text: 'Start with a real battery question. AURA understands cathodes, anodes, electrolytes, doping, and the trade-offs that define each.',
+    title: 'Describe the target',
+    text: 'Write the goal in plain language, such as a cobalt-free cathode above 250 mAh/g and under $50/kg. AURA turns it into numeric limits and a material class.',
   },
   {
     icon: Network,
     number: '02',
-    title: 'A connected evidence field',
-    text: 'Literature, material relationships, degradation modes, and synthesis constraints stay connected instead of becoming another pile of PDFs.',
+    title: 'Literature linked to rules',
+    text: 'Abstracts from arXiv, Crossref, PubMed and Wikipedia are filtered for relevance, de-duplicated, and mined into a knowledge graph of elements, properties and degradation modes.',
   },
   {
     icon: ShieldCheck,
     number: '03',
-    title: 'Recommendations you can defend',
-    text: 'Every promising candidate is ranked with predicted properties, confidence, and the exact reasoning your research team can inspect.',
+    title: 'Results you can check',
+    text: 'Each candidate shows predicted capacity, voltage, cycle life and cost, a comparison with NMC811, and the reasoning behind the numbers.',
   },
 ];
 
@@ -34,18 +34,18 @@ const Features = () => (
     <div className="site-frame">
       <div className="section-heading section-heading--split">
         <div>
-          <span className="section-kicker">Designed for scientific taste</span>
-          <h2>Research has never been short on data.<br />It has been short on <em>clarity.</em></h2>
+          <span className="section-kicker">What it does</span>
+          <h2>Battery papers are everywhere.<br />A checkable answer is <em>rare.</em></h2>
         </div>
-        <p>AURA brings the whole discovery loop into focus, so every new direction begins with more signal and less speculation.</p>
+        <p>AURA reads the literature, links it to chemistry rules, and uses both to answer questions and to search for new materials.</p>
       </div>
 
       <div className="evidence-banner">
         <div className="evidence-banner__content">
-          <span className="section-kicker">The AURA difference</span>
-          <h3>Not a chatbot with chemistry vocabulary.</h3>
-          <p>It is a research system that evolves possible materials, tests them against known constraints, and explains why the best ones deserve attention.</p>
-          <a href="#workflow" className="text-link">Follow the discovery loop <ArrowUpRight size={16} /></a>
+          <span className="section-kicker">Built on evidence</span>
+          <h3>The search stays inside chemistry rules.</h3>
+          <p>The genetic algorithm keeps lithium and oxygen fixed, keeps metal fractions summing to one, and never uses an excluded element. The language model estimates properties. It does not invent compositions.</p>
+          <a href="#workflow" className="text-link">See how it works <ArrowUpRight size={16} /></a>
         </div>
         <div className="evidence-banner__visual" aria-hidden="true">
           <span className="evidence-orbit evidence-orbit--one" />
