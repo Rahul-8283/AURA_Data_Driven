@@ -96,9 +96,12 @@ returns table (id text, document text, metadata jsonb, similarity double precisi
 language sql stable
 set search_path = public, extensions
 as $$
-    select c.id, c.document, c.metadata,
+    select c.id, c.document, c.metadata || jsonb_build_object('doi', c.doi) as metadata,
            1 - (c.embedding <=> query_embedding::extensions.vector(384)) as similarity
     from literature_chunks c
     order by c.embedding <=> query_embedding::extensions.vector(384)
     limit match_count;
 $$;
+
+-- Chat messages keep the mode used and, for answers, the sources that were cited.
+alter table chat_messages add column if not exists metadata jsonb not null default '{}'::jsonb;

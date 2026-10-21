@@ -22,9 +22,14 @@ def signed_in():
     ("get", "/api/v1/ingestion/stats"),
     ("post", "/api/v1/test-celery"),
     ("get", "/api/v1/task/abc"),
+    ("post", "/api/v1/rag/query"),
+    ("post", "/api/v1/chat/ask"),
 ])
 def test_protected_routes_reject_anonymous_requests(method, path):
-    kwargs = {"json": {"query": "lithium dendrite"}} if method == "post" and "sync" in path else {}
+    bodies = {"/api/v1/ingestion/sync": {"query": "lithium dendrite"},
+              "/api/v1/rag/query": {"prompt": "doping"},
+              "/api/v1/chat/ask": {"question": "What is LFP?"}}
+    kwargs = {"json": bodies[path]} if path in bodies else {}
 
     response = getattr(client, method)(path, **kwargs)
 
@@ -87,7 +92,7 @@ def test_db_health_does_not_leak_connection_details():
     assert body == {"neo4j": "disconnected", "pgvector": "disconnected", "supabase": "disconnected"}
 
 
-def test_rag_error_response_hides_internal_message():
+def test_rag_error_response_hides_internal_message(signed_in):
     with patch("app.api.v1.endpoints.rag.GraphRAGService.retrieve_context", new_callable=AsyncMock,
                side_effect=RuntimeError("bolt://secret-host:7687 refused")):
         response = client.post("/api/v1/rag/query", json={"prompt": "doping Al"})

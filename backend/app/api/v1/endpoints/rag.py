@@ -1,14 +1,16 @@
 import asyncio
 import logging
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.core.security import get_current_user
 from app.services.retrieval.graph_rag import GraphRAGService, reformat_with_llm
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+# Retrieval plus an LLM rewrite spends quota, so it requires a signed-in user like the chat endpoint.
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 class RAGRequest(BaseModel):
     prompt: str
