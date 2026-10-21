@@ -1,11 +1,11 @@
 # AURA – Autonomous Unified Research Assistant for Battery Materials Discovery
 
-Multi-agent system that evolves battery cathode/anode/electrolyte compositions: a deterministic Genetic Algorithm proposes candidates, GraphRAG (Neo4j + ChromaDB) validates chemistry, an LLM predicts properties, and a report ranks the results. Specs live in `docs/` (PRD, TRD, GA) and the build plan in `phases/phase_0.md` – `phase_8.md`. Read the relevant phase file before implementing or changing a stage.
+Multi-agent system that evolves battery cathode/anode/electrolyte compositions: a deterministic Genetic Algorithm proposes candidates, GraphRAG (Neo4j + pgvector) validates chemistry, an LLM predicts properties, and a report ranks the results. Specs live in `docs/` (PRD, TRD, GA) and the build plan in `phases/phase_0.md` – `phase_8.md`. Read the relevant phase file before implementing or changing a stage.
 
 ## Stack
 - **Frontend** (`frontend/`): React 19 + Vite + TypeScript, TailwindCSS v4, Zustand, Recharts, react-force-graph-2d, Framer Motion, Supabase JS (auth).
-- **Backend** (`backend/`): FastAPI, LangGraph, Celery + Redis, Supabase (Postgres/Auth), Neo4j, ChromaDB (local persistent `./chroma_data`).
-- **AI**: OpenRouter (LLM), Hugging Face Inference API `all-MiniLM-L6-v2` (embeddings).
+- **Backend** (`backend/`): FastAPI, LangGraph, Celery + Redis, Supabase (Postgres/Auth), Neo4j, pgvector in Supabase (`literature_chunks`).
+- **AI**: OpenRouter (LLM), local fastembed `all-MiniLM-L6-v2` (embeddings, no external API).
 
 ## Commands
 Backend (run from `backend/`; imports are rooted there: `from app...`, `from worker...`):
@@ -20,12 +20,13 @@ Frontend (run from `frontend/`):
 
 ## Architecture
 - Long-running work is async: `POST /api/v1/research/start` enqueues a Celery task and returns a `task_id`; the frontend polls `GET /api/v1/research/status/{task_id}`; results at `.../results/{task_id}`.
+- Chat has two modes. Ask: `POST /api/v1/chat/ask` (JWT) retrieves pgvector chunks and Neo4j rules, answers with one LLM request using only that context, and returns sources; no evidence means no LLM call; limited per user by `ASK_DAILY_LIMIT`. Discover: the existing `/research/start` flow. The frontend suggests a mode but never switches silently (`frontend/src/lib/chatIntent.ts`).
 - LangGraph pipeline (`app/agents/`): planner → mutator (GA) → validator (GraphRAG) → predictor (LLM) → fitness/loop → reporter. State is `ResearchState` in `app/agents/state.py`; graph is wired in `app/agents/workflow.py`.
 - Services in `app/services/`: `ingestion`, `embeddings.py`, `retrieval` (vector, graph, `graph_rag.py` fusion), `graph` (extractor, Neo4j ingestion), `ga` (material, operators, population, fitness), `llm` (OpenRouter client).
 - DB clients in `app/db/`; settings in `app/core/config.py` (pydantic-settings, reads `backend/.env`; see `.env.example`).
-- Supabase tables: `ResearchTasks`, `SavedMaterials`, plus `chat_messages` used by the chat UI.
+- Supabase tables: `ResearchTasks`, `SavedMaterials`, `chat_messages` (chat UI), and `literature_chunks` (pgvector literature store, see below).
 - Neo4j: nodes `Element`, `Material`, `Property`, `DegradationMode`; edges `CONTAINS`, `CAN_BE_DOPED_WITH`, `SUFFERS_FROM`, `PREVENTED_BY`.
-- ChromaDB collections: `battery_literature`, `material_properties`.
+- Literature vectors: Supabase table `literature_chunks` (pgvector, 384-dim, HNSW cosine), queried through `match_literature_chunks`.
 
 ## GA Invariants (do not break – see `docs/GA.md`, `phases/phase_5.md`)
 - Transition-metal/octahedral-site fractions always sum to exactly 1.0; no negative coefficients.

@@ -111,7 +111,7 @@ const Settings: React.FC = () => {
         </div>
 
         <nav className="workspace-nav" aria-label="Research workspace navigation">
-          <button type="button" onClick={() => navigate('/dashboard')} className="workspace-nav__item"><MessageSquare size={17} /> Discovery space</button>
+          <button type="button" onClick={() => navigate('/dashboard/discovery')} className="workspace-nav__item"><MessageSquare size={17} /> Discovery space</button>
           <button type="button" className="workspace-nav__item"><Database size={17} /> Evidence graph</button>
           <button type="button" className="workspace-nav__item"><FileText size={17} /> Research reports</button>
         </nav>

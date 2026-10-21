@@ -1,12 +1,15 @@
-import chromadb.utils.embedding_functions as embedding_functions
+import numpy as np
 
-def test_default_embedding():
-    try:
-        emb_fn = embedding_functions.DefaultEmbeddingFunction()
-        emb = emb_fn(["Hello world"])
-        print("Success! Dimensions:", len(emb[0]))
-    except Exception as e:
-        print("Error:", str(e))
+from app.services.embeddings import EMBEDDING_DIM, embed_texts
+
+
+def test_local_embedding_shape_and_normalization():
+    vectors = np.array(embed_texts(["Hello world", "Cobalt-free cathode doping"]))
+
+    assert vectors.shape == (2, EMBEDDING_DIM)
+    assert np.allclose(np.linalg.norm(vectors, axis=1), 1.0, atol=1e-4)
+
 
 if __name__ == "__main__":
-    test_default_embedding()
+    test_local_embedding_shape_and_normalization()
+    print("Local embedding OK:", EMBEDDING_DIM, "dimensions, normalized")

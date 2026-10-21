@@ -65,3 +65,43 @@ create policy "chat_messages_insert_own" on chat_messages
 drop policy if exists "chat_messages_delete_own" on chat_messages;
 create policy "chat_messages_delete_own" on chat_messages
     for delete using (auth.uid() = user_id);
+
+-- Literature vectors (pgvector). Replaces the former local ChromaDB store.
+-- Embeddings are all-MiniLM-L6-v2 (384 dimensions), computed by app/services/embeddings.py.
+create extension if not exists vector with schema extensions;
+
+create table if not exists literature_chunks (
+    id text primary key,
+    document text not null,
+    embedding extensions.vector(384) not null,
+    doi text,
+    title_key text,
+    graph_extracted boolean not null default false,
+    metadata jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now()
+);
+
+create index if not exists literature_chunks_embedding_idx
+    on literature_chunks using hnsw (embedding extensions.vector_cosine_ops);
+create index if not exists literature_chunks_doi_idx on literature_chunks (doi);
+create index if not exists literature_chunks_title_key_idx on literature_chunks (title_key);
+create index if not exists literature_chunks_pending_idx
+    on literature_chunks (created_at) where graph_extracted = false;
+
+-- Only the backend (service role, which bypasses RLS) reads or writes these rows.
+alter table literature_chunks enable row level security;
+
+create or replace function match_literature_chunks(query_embedding text, match_count int default 5)
+returns table (id text, document text, metadata jsonb, similarity double precision)
+language sql stable
+set search_path = public, extensions
+as $$
+    select c.id, c.document, c.metadata || jsonb_build_object('doi', c.doi) as metadata,
+           1 - (c.embedding <=> query_embedding::extensions.vector(384)) as similarity
+    from literature_chunks c
+    order by c.embedding <=> query_embedding::extensions.vector(384)
+    limit match_count;
+$$;
+
+-- Chat messages keep the mode used and, for answers, the sources that were cited.
+alter table chat_messages add column if not exists metadata jsonb not null default '{}'::jsonb;

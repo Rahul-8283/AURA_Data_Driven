@@ -16,6 +16,7 @@ __pycache__/
 .pytest_cache/
 
 # Local data
+# Legacy local ChromaDB store (pre-pgvector). Kept ignored so old copies are never committed.
 backend/chroma_data/
 
 # Node

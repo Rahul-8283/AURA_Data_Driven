@@ -205,6 +205,29 @@ def _run_cypher_search(tx, entities: List[str]):
     return [record["p"] for record in result]
 
 
+async def fetch_graph_rules(entities: List[str]) -> List[str]:
+    """Structural rules touching the given entities, as readable lines such as
+    "NMC811 CAN_BE_DOPED_WITH Mg". Raises if Neo4j cannot be queried."""
+    def fetch_paths():
+        with neo4j_conn.get_session() as session:
+            return session.execute_read(_run_cypher_search, entities)
+
+    paths = await asyncio.to_thread(fetch_paths)
+
+    lines = []
+    for path in paths:
+        # Reconstruct path logically: start_node -> relationship -> end_node
+        sentence_parts = []
+        for rel in path.relationships:
+            start_name = rel.start_node.get("name") or rel.start_node.get("symbol") or "Unknown"
+            end_name = rel.end_node.get("name") or rel.end_node.get("symbol") or "Unknown"
+            sentence_parts.append(f"{start_name} {rel.type} {end_name}")
+        lines.append(" AND ".join(sentence_parts))
+
+    # Deduplicate identical logical lines, keeping first-seen order
+    return list(dict.fromkeys(lines))
+
+
 async def get_graph_context(query: str, entities: List[str] | None = None) -> str:
     """
     Orchestrates the entity extraction and Neo4j path traversal.
@@ -214,43 +237,21 @@ async def get_graph_context(query: str, entities: List[str] | None = None) -> st
     """
     if entities is None:
         entities = await extract_entities(query)
-    
+
     if not entities:
         return "No chemical entities identified for structural search."
-        
+
     try:
-        def fetch_paths():
-            with neo4j_conn.get_session() as session:
-                return session.execute_read(_run_cypher_search, entities)
-                
-        paths = await asyncio.to_thread(fetch_paths)
+        unique_lines = await fetch_graph_rules(entities)
     except Exception as e:
         logger.error(f"Graph traversal failed: {e}")
         return "Graph retrieval error."
 
-    if not paths:
+    if not unique_lines:
         return f"No established structural rules found for entities: {', '.join(entities)}."
 
-    context_lines = []
-    for path in paths:
-        # Reconstruct path logically: start_node -> relationship -> end_node
-        rels = path.relationships
-        
-        sentence_parts = []
-        for rel in rels:
-            start_name = rel.start_node.get("name") or rel.start_node.get("symbol") or "Unknown"
-            end_name = rel.end_node.get("name") or rel.end_node.get("symbol") or "Unknown"
-            rel_type = rel.type
-            
-            sentence_parts.append(f"{start_name} {rel_type} {end_name}")
-            
-        context_lines.append(" AND ".join(sentence_parts))
-    
-    # Deduplicate identical logical lines
-    unique_lines = list(set(context_lines))
-    
     formatted_context = ""
     for idx, line in enumerate(unique_lines):
         formatted_context += f"[{idx + 1}] {line}.\n"
-        
+
     return formatted_context.strip()

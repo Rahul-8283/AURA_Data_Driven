@@ -18,9 +18,9 @@ async def test_retrieve_context_fusion():
     with patch("app.services.retrieval.graph_rag.get_graph_context", new_callable=AsyncMock) as mock_graph:
         with patch("app.services.retrieval.graph_rag.get_vector_context", new_callable=AsyncMock) as mock_vector:
             
-            # Also patch Chroma init so it doesn't spin up the database
-            with patch("app.services.retrieval.graph_rag.init_literature_collection") as mock_init_chroma:
-                mock_init_chroma.return_value = "MockCollectionObject"
+            # Also patch the store so no database connection is made
+            with patch("app.services.retrieval.graph_rag.get_literature_store") as mock_store:
+                mock_store.return_value = "MockStoreObject"
                 
                 # Make the mocked functions return our dummy strings
                 mock_graph.return_value = mock_graph_output
@@ -31,7 +31,7 @@ async def test_retrieve_context_fusion():
                 
                 # Assertions
                 mock_graph.assert_called_once_with(query, None)
-                mock_vector.assert_called_once_with("MockCollectionObject", query, n_results=5)
+                mock_vector.assert_called_once_with("MockStoreObject", query, n_results=5)
                 
                 # Verify the final template format
                 assert "=== STRUCTURAL GRAPH RULES (Absolute Truths) ===" in combined_context
@@ -53,7 +53,7 @@ async def test_retrieve_context_token_trimming():
     
     with patch("app.services.retrieval.graph_rag.get_graph_context", new_callable=AsyncMock) as mock_graph:
         with patch("app.services.retrieval.graph_rag.get_vector_context", new_callable=AsyncMock) as mock_vector:
-            with patch("app.services.retrieval.graph_rag.init_literature_collection"):
+            with patch("app.services.retrieval.graph_rag.get_literature_store"):
                 mock_graph.return_value = "Graph Result"
                 mock_vector.return_value = massive_vector_output
                 

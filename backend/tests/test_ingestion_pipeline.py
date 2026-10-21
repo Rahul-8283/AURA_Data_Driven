@@ -15,37 +15,50 @@ from app.services.harvesters import HarvestedDocument, HarvesterError
 from app.services.llm.errors import LLMQuotaExceeded, LLMUnavailableError
 from main import app
 from worker import tasks
-from worker.tasks import harvest_and_ingest_task, periodic_nightly_harvest, process_chroma_chunks_task
+from worker.tasks import harvest_and_ingest_task, periodic_nightly_harvest, extract_graph_triplets_task
 
 
-class FakeCollection:
-    """In-memory stand-in for a Chroma collection with the calls the tasks use."""
+class FakeStore:
+    """In-memory stand-in for LiteratureStore with the same methods the tasks use."""
 
     def __init__(self):
         self.docs = {}
 
-    def upsert(self, documents, metadatas, ids):
-        for document, metadata, chunk_id in zip(documents, metadatas, ids):
+    def upsert(self, ids, documents, metadatas):
+        for chunk_id, document, metadata in zip(ids, documents, metadatas):
             self.docs[chunk_id] = {"document": document, "metadata": dict(metadata)}
 
     def count(self):
         return len(self.docs)
 
-    def get(self, ids=None, where=None, limit=None, include=None):
-        items = [(i, v) for i, v in self.docs.items() if ids is None or i in ids]
-        if where:
-            items = [(i, v) for i, v in items if all(v["metadata"].get(k) == val for k, val in where.items())]
-        if limit:
-            items = items[:limit]
-        return {
-            "ids": [i for i, _ in items],
-            "documents": [v["document"] for _, v in items],
-            "metadatas": [v["metadata"] for _, v in items],
-        }
+    def _pending(self, chunk_ids=None):
+        scope = self.docs if chunk_ids is None else {i: self.docs[i] for i in chunk_ids if i in self.docs}
+        return [i for i, v in scope.items() if not v["metadata"].get("graph_extracted")]
 
-    def update(self, ids, metadatas):
-        for chunk_id, metadata in zip(ids, metadatas):
-            self.docs[chunk_id]["metadata"] = dict(metadata)
+    def count_pending(self, chunk_ids=None):
+        return len(self._pending(chunk_ids))
+
+    def fetch_pending(self, limit, chunk_ids=None):
+        return [(i, self.docs[i]["document"]) for i in self._pending(chunk_ids)[:limit]]
+
+    def mark_graph_extracted(self, ids):
+        for i in ids:
+            self.docs[i]["metadata"]["graph_extracted"] = True
+
+    def exists(self, doi=None, title_key=None):
+        return any(
+            (doi and v["metadata"].get("doi") == doi) or (title_key and v["metadata"].get("title_key") == title_key)
+            for v in self.docs.values()
+        )
+
+    def delete_by_doi(self, doi):
+        self.docs = {i: v for i, v in self.docs.items() if v["metadata"].get("doi") != doi}
+
+    def search(self, query, n_results=5):
+        return []
+
+    def heartbeat(self):
+        return None
 
 
 def make_doc(title, doi, source="arxiv"):
@@ -70,8 +83,8 @@ def run_harvest(collection, harvesters, sources=("arxiv", "wikipedia", "crossref
         "PubMedHarvester": harvesters.get("pubmed", fake_harvester([])),
     }
     with patch.multiple("worker.tasks", **classes), \
-         patch("worker.tasks.init_literature_collection", return_value=collection), \
-         patch.object(process_chroma_chunks_task, "delay", return_value=SimpleNamespace(id="extract-1")) as delay:
+         patch("worker.tasks.get_literature_store", return_value=collection), \
+         patch.object(extract_graph_triplets_task, "delay", return_value=SimpleNamespace(id="extract-1")) as delay:
         result = harvest_and_ingest_task.run("cathode doping", list(sources), 10)
     return result, delay
 
@@ -79,7 +92,7 @@ def run_harvest(collection, harvesters, sources=("arxiv", "wikipedia", "crossref
 # --- harvest task ----------------------------------------------------------------------------
 
 def test_harvest_indexes_new_documents_once_and_flags_them_for_extraction():
-    collection = FakeCollection()
+    collection = FakeStore()
     paper_a = make_doc("Mg-doped NMC811 cathodes", "arxiv:1")
     paper_a_elsewhere = make_doc("Mg doped NMC811 cathodes!", "doi:10.1/a", source="crossref")
     paper_b = make_doc("Cobalt-free layered oxides", "pubmed:2", source="pubmed")
@@ -101,7 +114,7 @@ def test_harvest_indexes_new_documents_once_and_flags_them_for_extraction():
 
 
 def test_harvesting_the_same_papers_again_indexes_nothing_and_queues_no_extraction():
-    collection = FakeCollection()
+    collection = FakeStore()
     harvesters = {"arxiv": fake_harvester([make_doc("Mg-doped NMC811 cathodes", "arxiv:1")])}
     run_harvest(collection, harvesters, sources=["arxiv"])
 
@@ -113,7 +126,7 @@ def test_harvesting_the_same_papers_again_indexes_nothing_and_queues_no_extracti
 
 
 def test_harvest_fails_loudly_when_every_source_fails():
-    collection = FakeCollection()
+    collection = FakeStore()
     failing = {name: fake_harvester(error=HarvesterError("status 503")) for name in ("arxiv", "wikipedia", "crossref", "pubmed")}
 
     with pytest.raises(HarvesterError, match="All literature sources failed"):
@@ -128,7 +141,7 @@ def test_harvest_rejects_a_request_with_no_valid_source():
 # --- incremental, quota-aware triplet extraction ---------------------------------------------
 
 def seeded_collection(total, already_extracted=0):
-    collection = FakeCollection()
+    collection = FakeStore()
     for i in range(total):
         collection.docs[f"c{i}"] = {"document": f"chunk text {i}", "metadata": {"graph_extracted": i < already_extracted}}
     return collection
@@ -138,10 +151,10 @@ TRIPLET = Triplet(subject_label="Material", subject="NMC811", predicate="CAN_BE_
 
 
 def run_extraction(collection, extract, ingest=None, **kwargs):
-    with patch("worker.tasks.init_literature_collection", return_value=collection), \
+    with patch("worker.tasks.get_literature_store", return_value=collection), \
          patch("worker.tasks.extract_triplets_from_text", side_effect=extract) as extractor, \
          patch("worker.tasks.ingest_triplets", side_effect=ingest) as ingester:
-        result = process_chroma_chunks_task.run(**kwargs)
+        result = extract_graph_triplets_task.run(**kwargs)
     return result, extractor, ingester
 
 
@@ -321,36 +334,36 @@ def neo4j_returning(nodes, relationships):
 
 def test_stats_report_real_counts_when_stores_are_up(client, monkeypatch):
     monkeypatch.setattr(settings, "NIGHTLY_HARVEST_ENABLED", True)
-    with patch.object(ingestion_endpoint, "init_literature_collection", return_value=MagicMock(count=lambda: 150)), \
+    with patch.object(ingestion_endpoint, "get_literature_store", return_value=MagicMock(count=lambda: 150)), \
          patch.object(ingestion_endpoint, "neo4j_conn", neo4j_returning(40, 175)):
         body = client.get("/api/v1/ingestion/stats").json()
 
-    assert (body["chroma_literature_chunks"], body["neo4j_nodes"], body["neo4j_relationships"]) == (150, 40, 175)
+    assert (body["literature_chunks"], body["neo4j_nodes"], body["neo4j_relationships"]) == (150, 40, 175)
     assert body["errors"] == {} and body["nightly_sweep_enabled"] is True
 
 
 def test_stats_report_outages_as_null_not_zero(client):
     broken_neo4j = MagicMock()
     broken_neo4j.get_session.side_effect = RuntimeError("bolt://secret-host unreachable")
-    with patch.object(ingestion_endpoint, "init_literature_collection", side_effect=RuntimeError("disk")), \
+    with patch.object(ingestion_endpoint, "get_literature_store", side_effect=RuntimeError("disk")), \
          patch.object(ingestion_endpoint, "neo4j_conn", broken_neo4j):
         response = client.get("/api/v1/ingestion/stats")
 
     body = response.json()
     assert response.status_code == 200
-    assert body["chroma_literature_chunks"] is None and body["neo4j_nodes"] is None
-    assert body["errors"] == {"chroma": "unavailable", "neo4j": "unavailable"}
+    assert body["literature_chunks"] is None and body["neo4j_nodes"] is None
+    assert body["errors"] == {"pgvector": "unavailable", "neo4j": "unavailable"}
     assert "secret-host" not in response.text
 
 
 def test_stats_run_their_blocking_calls_off_the_event_loop(client):
     with patch.object(ingestion_endpoint.asyncio, "to_thread", wraps=asyncio.to_thread) as to_thread, \
-         patch.object(ingestion_endpoint, "init_literature_collection", return_value=MagicMock(count=lambda: 1)), \
+         patch.object(ingestion_endpoint, "get_literature_store", return_value=MagicMock(count=lambda: 1)), \
          patch.object(ingestion_endpoint, "neo4j_conn", neo4j_returning(1, 1)):
         client.get("/api/v1/ingestion/stats")
 
     called = {call.args[0] for call in to_thread.call_args_list}
-    assert called == {ingestion_endpoint._chroma_count, ingestion_endpoint._neo4j_counts}
+    assert called == {ingestion_endpoint._vector_count, ingestion_endpoint._neo4j_counts}
 
 
 def test_a_hanging_store_is_reported_as_timed_out_within_the_limit(client, monkeypatch):
@@ -365,11 +378,11 @@ def test_a_hanging_store_is_reported_as_timed_out_within_the_limit(client, monke
 
     hanging_neo4j = MagicMock()
     hanging_neo4j.get_session.return_value.__enter__.return_value.run.side_effect = hang
-    with patch.object(ingestion_endpoint, "init_literature_collection", return_value=MagicMock(count=lambda: 42)), \
+    with patch.object(ingestion_endpoint, "get_literature_store", return_value=MagicMock(count=lambda: 42)), \
          patch.object(ingestion_endpoint, "neo4j_conn", hanging_neo4j):
         body = client.get("/api/v1/ingestion/stats").json()
     release.set()
 
-    assert body["chroma_literature_chunks"] == 42
+    assert body["literature_chunks"] == 42
     assert body["neo4j_nodes"] is None and body["neo4j_relationships"] is None
     assert body["errors"] == {"neo4j": "timed out"}

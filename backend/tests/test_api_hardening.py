@@ -22,9 +22,14 @@ def signed_in():
     ("get", "/api/v1/ingestion/stats"),
     ("post", "/api/v1/test-celery"),
     ("get", "/api/v1/task/abc"),
+    ("post", "/api/v1/rag/query"),
+    ("post", "/api/v1/chat/ask"),
 ])
 def test_protected_routes_reject_anonymous_requests(method, path):
-    kwargs = {"json": {"query": "lithium dendrite"}} if method == "post" and "sync" in path else {}
+    bodies = {"/api/v1/ingestion/sync": {"query": "lithium dendrite"},
+              "/api/v1/rag/query": {"prompt": "doping"},
+              "/api/v1/chat/ask": {"question": "What is LFP?"}}
+    kwargs = {"json": bodies[path]} if path in bodies else {}
 
     response = getattr(client, method)(path, **kwargs)
 
@@ -80,14 +85,14 @@ def test_test_celery_accepts_a_small_job(signed_in):
 
 def test_db_health_does_not_leak_connection_details():
     with patch("app.api.v1.endpoints.health.neo4j_conn.verify_connectivity", return_value=False), \
-         patch("app.api.v1.endpoints.health.chroma_client.heartbeat", side_effect=Exception("host=db.internal.example password=hunter2")), \
+         patch("app.api.v1.endpoints.health.get_literature_store", side_effect=Exception("host=db.internal.example password=hunter2")), \
          patch("app.api.v1.endpoints.health.supabase_client.auth.get_session", side_effect=Exception("https://secret.supabase.co")):
         body = client.get("/api/v1/health/db").json()
 
-    assert body == {"neo4j": "disconnected", "chroma": "disconnected", "supabase": "disconnected"}
+    assert body == {"neo4j": "disconnected", "pgvector": "disconnected", "supabase": "disconnected"}
 
 
-def test_rag_error_response_hides_internal_message():
+def test_rag_error_response_hides_internal_message(signed_in):
     with patch("app.api.v1.endpoints.rag.GraphRAGService.retrieve_context", new_callable=AsyncMock,
                side_effect=RuntimeError("bolt://secret-host:7687 refused")):
         response = client.post("/api/v1/rag/query", json={"prompt": "doping Al"})

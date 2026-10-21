@@ -9,10 +9,6 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str
     SUPABASE_JWT_SECRET: str
     
-    # ChromaDB
-    CHROMA_DATABASE: str
-    CHROMA_PERSIST_DIRECTORY: str = "./chroma_data"
-    
     # LLM/Embeddings
     HF_API_key: str | None = None
     gemini_api_key: str
@@ -29,6 +25,10 @@ class Settings(BaseSettings):
     # LLM result caches (predictions and validity verdicts), kept per worker process
     LLM_CACHE_TTL_SECONDS: int = 3600
     LLM_CACHE_MAX_ENTRIES: int = 5000
+
+    # Literature Q&A (chat Ask mode)
+    ASK_DAILY_LIMIT: int = 30          # grounded answers per user per UTC day; each costs one LLM request
+    ASK_MAX_DISTANCE: float = 0.75     # cosine distance above which a chunk is not treated as evidence
 
     # Genetic algorithm sizing (lower these for quick test runs)
     GA_GENERATIONS: int = 20

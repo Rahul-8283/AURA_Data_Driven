@@ -16,9 +16,9 @@ AURA operates on a decoupled architecture, separating the interactive UI from th
 - **Task Queue & Broker:** Celery workers backed by Redis.
 - **Auth & Relational DB:** Supabase (PostgreSQL, Authentication, Buckets).
 - **Knowledge Graph:** Neo4j (Nodes & Edges).
-- **Vector Database:** ChromaDB (Configured for local persistent storage).
+- **Vector Database:** pgvector in Supabase Postgres (`literature_chunks`, HNSW cosine index).
 - **LLM Engine:** OpenRouter (OpenAI-compatible API routing).
-- **Embeddings:** Hugging Face Inference API (`all-MiniLM-L6-v2`).
+- **Embeddings:** fastembed, computed locally (`all-MiniLM-L6-v2`, 384-dim).
 
 ---
 
@@ -34,9 +34,9 @@ Due to the long-running nature of the Genetic Algorithm and LLM prediction loops
 ### 2.2 LangGraph Multi-Agent Workflow
 LangGraph manages the state of the Genetic Algorithm across multiple specialized agents:
 - **Planner Agent:** Breaks down the user requirement into a mathematical fitness function.
-- **Literature Agent:** Chunks battery papers, generates embeddings via Hugging Face (`all-MiniLM-L6-v2`), and stores them in ChromaDB. Populates structural rules into Neo4j.
+- **Literature Agent:** Chunks battery papers, generates embeddings locally (`all-MiniLM-L6-v2`), and stores them in pgvector. Populates structural rules into Neo4j.
 - **GA Mutation Agent:** Selects parent materials and applies crossover/doping/substitution rules.
-- **Validation Agent (GraphRAG):** Queries ChromaDB and Neo4j to ensure the mutated material doesn't violate known chemical stability rules (e.g., impossible oxidation states).
+- **Validation Agent (GraphRAG):** Queries pgvector and Neo4j to ensure the mutated material doesn't violate known chemical stability rules (e.g., impossible oxidation states).
 - **Prediction Agent:** Constructs a prompt containing the valid mutation and relevant GraphRAG context. Sends to **OpenRouter** (e.g., Claude 3.5 Sonnet) to predict Capacity, Voltage, and Cost.
 - **Report Agent:** Ranks the final population and formats the output into a structured JSON/Markdown report.
 
@@ -47,19 +47,21 @@ LangGraph manages the state of the Genetic Algorithm across multiple specialized
 ### 3.1 Supabase (PostgreSQL) - Relational Data
 Used for application state, user management, and history.
 - **Users Table:** Managed by Supabase Auth.
-- **ResearchTasks Table:** `id`, `user_id`, `prompt`, `status` (pending, processing, completed), `created_at`.
-- **SavedMaterials Table:** `id`, `user_id`, `composition`, `predicted_capacity`, `predicted_cost`, `reasoning`.
+- **ResearchTasks Table:** `id`, `user_id`, `prompt`, `status` (processing, completed, failed), `result_json`, `created_at`.
+- **SavedMaterials Table:** `id`, `task_id`, `user_id`, `composition`, `predicted_capacity`, `predicted_cost`, `reasoning`, `created_at`.
+- **chat_messages Table:** `id`, `user_id`, `role`, `content`, `created_at`.
+- **literature_chunks Table:** shared literature with `embedding vector(384)`; see section 3.3.
 
 ### 3.2 Neo4j - Knowledge Graph
 Used for hard chemical rules and relationships.
 - **Nodes:** `Element` (e.g., Lithium, Cobalt), `Material` (e.g., LCO, NMC811), `Property` (e.g., High Capacity), `DegradationMode` (e.g., Cation Mixing).
 - **Edges:** `[:CONTAINS]`, `[:CAN_BE_DOPED_WITH]`, `[:SUFFERS_FROM]`, `[:PREVENTED_BY]`.
 
-### 3.3 ChromaDB - Vector Storage
+### 3.3 pgvector - Vector Storage
 Used for semantic context retrieval.
-- **Collections:** `battery_literature`, `material_properties`.
-- **Data:** Chunked text from research papers embedded into dense vectors.
-- **Persistence:** Configured to save to local disk (`./chroma_data`) to prevent data loss on container restart.
+- **Table:** `literature_chunks` in the Supabase project, with `embedding vector(384)`.
+- **Data:** Chunked text from research papers embedded into dense vectors, with DOI and title fingerprint for de-duplication.
+- **Persistence:** Supabase Postgres, so it survives restarts and is shared by the API and the worker.
 
 ---
 

@@ -33,10 +33,10 @@ export interface IngestionStatusResponse {
 
 export interface KnowledgeStatsResponse {
   // null means the store could not be reached, which is not the same as empty
-  chroma_literature_chunks: number | null;
+  literature_chunks: number | null;
   neo4j_nodes: number | null;
   neo4j_relationships: number | null;
-  errors: { chroma?: string; neo4j?: string };
+  errors: { pgvector?: string; neo4j?: string };
   supported_sources: string[];
   nightly_sweep_enabled: boolean;
 }

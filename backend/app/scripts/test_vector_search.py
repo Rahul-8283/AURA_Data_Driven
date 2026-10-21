@@ -5,7 +5,7 @@ import os
 # Add backend to path so we can run directly
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from app.db.chroma_client import init_literature_collection
+from app.db.literature_store import get_literature_store
 from app.services.retrieval.vector_search import search_literature
 
 def main():
@@ -15,15 +15,14 @@ def main():
 
     print(f"Query: '{args.query}'\n")
     
-    collection = init_literature_collection()
-    results = search_literature(collection, args.query, n_results=5)
+    results = search_literature(get_literature_store(), args.query, n_results=5)
 
     if not results:
         print("No results found.")
         return
 
     for i, res in enumerate(results):
-        print(f"--- Result {i+1} (Distance: {res['distance']}) ---")
+        print(f"--- Result {i+1} (Cosine distance: {res['distance']:.4f}) ---")
         source = res['metadata'].get('source', 'Unknown').encode('ascii', 'ignore').decode()
         print(f"Source: {source}")
         

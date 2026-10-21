@@ -31,7 +31,7 @@ const Login = () => {
       if (error) throw error;
       
       // Redirect to dashboard on success
-      navigate('/dashboard');
+      navigate('/dashboard/discovery');
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : 'Invalid login credentials. Please try again.');
     } finally {

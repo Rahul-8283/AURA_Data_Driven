@@ -11,7 +11,7 @@
 ![Python](https://img.shields.io/badge/python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-managed-DE5FE9?style=for-the-badge&logo=uv&logoColor=white)
 ![Node](https://img.shields.io/badge/node-20.19%2B%20or%2022.12%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-141%20passing-2e7d32?style=for-the-badge&logo=pytest&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-184%20passing-2e7d32?style=for-the-badge&logo=pytest&logoColor=white)
 ![License](https://img.shields.io/badge/license-Apache%202.0-D22128?style=for-the-badge&logo=apache&logoColor=white)
 
 <br/>
@@ -73,10 +73,11 @@ The knowledge loop feeds the discovery loop: harvested literature and mined grap
 
 - **Natural-language planning** into numeric targets, material class and excluded elements.
 - **Constraint-safe evolution** with elitism, tournament selection and canonical formulas.
-- **Hybrid retrieval** from a Neo4j rule graph and ChromaDB literature, fetched concurrently.
+- **Hybrid retrieval** from a Neo4j rule graph and pgvector literature (Supabase), fetched concurrently.
 - **An automated paper-fetching pipeline** over arXiv, Crossref, PubMed and Wikipedia, with relevance filtering, de-duplication and a quota-aware graph miner.
 - **Quota-aware LLM use.** A full run costs about 42 requests, and a spent quota fails the run with a clear message.
 - **A results dashboard** with an executive summary, material cards, an evolution chart, an interactive knowledge graph and PDF export.
+- **A chat that answers or discovers.** Ask mode answers questions from your harvested papers and the knowledge graph, with cited sources. Discover mode runs the evolutionary search.
 - **Per-user history** in Supabase under row level security.
 
 ---
@@ -114,7 +115,7 @@ The knowledge loop feeds the discovery loop: harvested literature and mined grap
 
 ![Upstash](https://img.shields.io/badge/Upstash%20Redis-00E9A3?style=for-the-badge&logo=upstash&logoColor=black)
 ![Neo4j](https://img.shields.io/badge/Neo4j%20Aura-4581C3?style=for-the-badge&logo=neo4j&logoColor=white)
-![ChromaDB](https://img.shields.io/badge/ChromaDB-FF6446?style=for-the-badge)
+![pgvector](https://img.shields.io/badge/pgvector-336791?style=for-the-badge&logo=postgresql&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
 
@@ -142,10 +143,10 @@ The knowledge loop feeds the discovery loop: harvested literature and mined grap
 | Orchestration | LangGraph | The planner, mutator, predictor and reporter state machine |
 | Async execution | Celery with Upstash Redis over TLS | Discovery runs, harvests, graph mining, optional nightly sweep |
 | Package management | uv with `pyproject.toml` and `uv.lock` | Reproducible Python environment |
-| Identity and relational data | Supabase (Auth and PostgreSQL) | JWT auth, `ResearchTasks`, `SavedMaterials`, `chat_messages` |
+| Identity and relational data | Supabase (Auth and PostgreSQL) | JWT auth, `ResearchTasks`, `SavedMaterials`, `chat_messages`, `literature_chunks` (pgvector) |
 | Knowledge graph | Neo4j (Aura or local) | Structural chemistry rules |
-| Vector store | ChromaDB, persistent on local disk | Literature chunks and embeddings |
-| Embeddings | Chroma `DefaultEmbeddingFunction`, local ONNX `all-MiniLM-L6-v2` (384-dim) | Offline semantic embeddings, no external call |
+| Vector store | pgvector in Supabase Postgres, HNSW cosine index | Literature chunks and embeddings, in the same project as auth and run history |
+| Embeddings | fastembed, local ONNX `all-MiniLM-L6-v2` (384-dim) | Offline semantic embeddings, no external call |
 | LLM | OpenRouter free router, Gemini 2.5 Flash fallback | Planning, validation, prediction, summaries, triplet extraction |
 | Harvesting | `httpx`, `defusedxml`, PyMuPDF, `langchain-text-splitters` | Source APIs, safe XML parsing, PDF parsing, chunking |
 | Resilience | `tenacity` | Retry with exponential backoff |
@@ -178,7 +179,7 @@ flowchart LR
     end
 
     subgraph local["Worker filesystem"]
-        chroma[("ChromaDB<br/>literature vectors")]
+        pgv[("pgvector<br/>literature vectors")]
     end
 
     subgraph llm["LLM providers"]
@@ -201,13 +202,13 @@ flowchart LR
     worker --> lg
     worker --> kn
     lg --> neo
-    lg --> chroma
+    lg --> pgv
     lg --> orr
     kn --> arx
     kn --> cro
     kn --> pub
     kn --> wik
-    kn --> chroma
+    kn --> pgv
     kn --> neo
     kn --> orr
     orr -.->|"on failure"| gem
@@ -221,7 +222,7 @@ flowchart LR
 flowchart TB
     subgraph kloop["Knowledge loop"]
         direction LR
-        k1["Harvest<br/>4 sources"] --> k2["Relevance gate"] --> k3["De-duplicate"] --> k4["Chunk and embed"] --> k5[("ChromaDB")]
+        k1["Harvest<br/>4 sources"] --> k2["Relevance gate"] --> k3["De-duplicate"] --> k4["Chunk and embed"] --> k5[("pgvector")]
         k5 --> k6["Graph miner<br/>LLM triplets"] --> k7[("Neo4j")]
     end
 
@@ -250,7 +251,6 @@ flowchart TB
         t2["Terminal 2<br/>uv run celery worker"]
         t3["Terminal 3<br/>npm run dev :5173"]
         t4["Terminal 4, optional<br/>uv run celery beat"]
-        disk[("backend/chroma_data")]
     end
 
     subgraph cloud["Cloud"]
@@ -267,11 +267,9 @@ flowchart TB
     t1 --> up
     t1 --> sb
     t1 --> n4
-    t1 --> disk
     t2 --> up
     t2 --> sb
     t2 --> n4
-    t2 --> disk
     t2 --> orr
     t2 -.-> gm
     t2 --> src
@@ -511,7 +509,7 @@ flowchart TD
     d2 -->|"yes"| x3["Skipped"]
     d2 -->|"no"| c["Chunk<br/>1000 characters, 200 overlap"]
     c --> e["Embed locally<br/>ONNX MiniLM, 384-dim"]
-    e --> u[("ChromaDB<br/>battery_literature")]
+    e --> u[("pgvector<br/>literature_chunks")]
     u --> f["Flag graph_extracted = false"]
     f --> m["Graph miner<br/>groups of chunks, capped LLM calls"]
     m --> n[("Neo4j<br/>MERGE triplets")]
@@ -526,7 +524,7 @@ sequenceDiagram
     participant API as FastAPI
     participant W as Celery worker
     participant S as Source APIs
-    participant C as ChromaDB
+    participant C as pgvector
     participant L as LLM
     participant N as Neo4j
 
@@ -568,9 +566,9 @@ flowchart TD
     a -->|"yes"| s1["Skip"]
     a -->|"no"| b{"Title fingerprint<br/>seen in this run?"}
     b -->|"yes"| s2["Skip"]
-    b -->|"no"| c{"DOI in ChromaDB?"}
+    b -->|"no"| c{"DOI in pgvector?"}
     c -->|"yes"| s3["Skip"]
-    c -->|"no"| e{"Title fingerprint<br/>in ChromaDB?"}
+    c -->|"no"| e{"Title fingerprint<br/>in pgvector?"}
     e -->|"yes"| s4["Skip"]
     e -->|"no"| i(["Index"])
 ```
@@ -590,7 +588,7 @@ classDiagram
         +str published_date
         +list authors
     }
-    class ChromaChunkMetadata {
+    class ChunkMetadata {
         +str title
         +str title_key
         +str doi
@@ -601,7 +599,7 @@ classDiagram
         +int chunk_index
         +bool graph_extracted
     }
-    HarvestedDocument --> ChromaChunkMetadata : chunked with
+    HarvestedDocument --> ChunkMetadata : chunked with
 ```
 
 ### Graph miner
@@ -715,7 +713,6 @@ flowchart LR
 | `REDIS_URL` | **Required** | Celery broker and result backend | Upstash console, your database, the `rediss://` connection string |
 | `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` | **Required** | Knowledge graph | Neo4j Aura console, `neo4j+s://` URI and generated password |
 | `GEMINI_API_KEY` | **Required** | LLM fallback | Google AI Studio, `aistudio.google.com/apikey` |
-| `CHROMA_DATABASE` | **Required** | Chroma database name | Any name, for example `database` |
 | `OPENROUTER_API_KEY` | Recommended | Primary LLM through the free router | `openrouter.ai/keys` |
 | `NCBI_API_KEY` | Optional | Raises PubMed from 3 to 10 requests per second | NCBI account settings, API Key Management |
 | `CONTACT_EMAIL` | Optional, recommended | Identifies the harvester to arXiv, Crossref, Wikipedia and NCBI | Your own address. Blank sends none |
@@ -791,7 +788,7 @@ flowchart LR
 
     subgraph retr["Concurrent retrieval"]
         g["Neo4j<br/>paths up to 2 hops, limit 20"]
-        v["ChromaDB<br/>top 5 literature chunks"]
+        v["pgvector<br/>top 5 literature chunks"]
     end
 
     q --> v
@@ -888,14 +885,28 @@ erDiagram
         uuid user_id FK
         text role
         text content
+        jsonb metadata
+        timestamptz created_at
+    }
+    LITERATURE_CHUNKS {
+        text id PK
+        text document
+        vector_384 embedding
+        text doi
+        text title_key
+        boolean graph_extracted
+        jsonb metadata
         timestamptz created_at
     }
 ```
 
+`LITERATURE_CHUNKS` is shared literature, not user data, so it has no foreign keys. It is the only table with `vector(384)`, an HNSW cosine index, and RLS enabled with no policies.
+
 - Create everything by running [`backend/supabase/schema.sql`](backend/supabase/schema.sql) once in the Supabase SQL editor. It is idempotent.
-- Row level security is on for every table and scopes reads to `auth.uid() = user_id`.
+- Row level security is on for every table. The three user tables scope reads and writes to `auth.uid() = user_id`. `literature_chunks` has no policies, so only the service role can reach it.
 - The backend uses the **service role key**, which bypasses RLS. The frontend uses the **anon key**, which respects it.
 - `ResearchTasks.status` moves from `processing` to `completed` or `failed`. On failure `result_json` holds the reason.
+- `chat_messages.metadata` stores the mode and, for Ask answers, the question, cited sources and graph rules, so history restores them.
 
 ### Neo4j
 
@@ -922,12 +933,14 @@ flowchart LR
 - Uniqueness constraints on `Element.symbol`, `Material.name`, `Property.name` and `DegradationMode.name` are created on API startup.
 - The driver recycles pooled connections every 300 seconds to stay ahead of Aura's idle timeout.
 
-### ChromaDB
+### pgvector (literature vectors)
 
-- One collection, `battery_literature`, using cosine distance and the local ONNX embedding function.
-- Persisted under `backend/chroma_data/` (configurable) and git-ignored. The API and the worker both read it from disk, so they must share the directory.
-
----
+- One table, `literature_chunks`, in the Supabase project: `id`, `document`, `embedding vector(384)`, `doi`, `title_key`, `graph_extracted`, `metadata` (jsonb), `created_at`.
+- An HNSW index with cosine distance serves similarity search through the `match_literature_chunks` function. Btree indexes on `doi`, `title_key` and pending chunks serve de-duplication and graph mining.
+- Row level security is on with no policies, so only the backend's service role reads or writes these rows.
+- Create it by running [`backend/supabase/schema.sql`](backend/supabase/schema.sql) once. The script enables the `vector` extension first.
+- Embeddings come from fastembed (`all-MiniLM-L6-v2`, computed locally with ONNX).
+- Existing ChromaDB data is copied with `uv run --with chromadb python -m app.scripts.migrate_chroma_to_pgvector --path <chroma dir>`. Embeddings are copied, not recomputed.
 
 ## Frontend
 
@@ -940,23 +953,81 @@ flowchart TD
     pub --> login["/login"]
     pub --> signup["/signup"]
 
-    prot --> dash["/dashboard"]
+    prot --> dash["/dashboard<br/>redirects to /dashboard/discovery"]
     prot --> res["/results/:taskId<br/>lazy loaded"]
     prot --> set["/settings"]
 
-    dash --> chat["Discovery space<br/>ChatInterface"]
-    dash --> ev["Evidence graph<br/>EvidencePanel"]
-    dash --> rep["Research reports<br/>ReportsPanel"]
+    dash --> chat["/dashboard/discovery<br/>Chat: Ask or Discover"]
+    dash --> ev["/dashboard/evidence<br/>EvidencePanel"]
+    dash --> rep["/dashboard/reports<br/>ReportsPanel"]
 
-    chat -->|"useDiscoveryTask"| poll["Start run, poll every 3s"]
+    chat -->|"Ask: POST /chat/ask"| ans["Grounded answer with sources"]
+    chat -->|"Discover: useDiscoveryTask"| poll["Start run, poll every 3s"]
     poll -->|"on Complete"| res
     ev -->|"useIngestionSync"| ing["Harvest, then follow graph mining"]
     rep -->|"open a run"| res
 ```
 
+### Chat: Ask and Discover
+
+The Discovery space has two modes, switched with the toggle beside the input. **Ask** is the default, and the active mode is always visible.
+
+| Mode | What it does | Cost |
+|---|---|---|
+| **Ask** | Answers a question from the harvested papers and the knowledge graph, with numbered sources and the graph rules used | One LLM request, and none when there is no evidence |
+| **Discover** | Starts the evolutionary search and opens a ranked report | About 42 LLM requests |
+
+```mermaid
+flowchart TD
+    msg(["Message"]) --> cmd{"Starts with<br/>/ask or /discover?"}
+    cmd -->|"yes"| mode{"Mode"}
+    cmd -->|"no"| rule{"Does the text fit<br/>the other mode?"}
+    rule -->|"no"| mode
+    rule -->|"yes"| chip["Ask first:<br/>switch or keep"]
+    chip -->|"switch or keep"| mode
+    mode -->|"Ask"| ask["POST /api/v1/chat/ask"]
+    mode -->|"Discover"| disc["POST /api/v1/research/start"]
+    ask --> ans["Answer with sources and graph rules"]
+    ans --> follow["Search for candidates based on this"]
+    follow --> disc
+    disc --> res["Poll, then results page"]
+```
+
+- A `/discover` or `/ask` prefix forces the mode for that one message.
+- Simple keyword rules compare the text with the selected mode. They only prompt you ("This looks like a design request. Run a discovery instead?"); they never switch silently.
+- Messages are saved with their mode, and answers also keep their sources, so the history restores them.
+
+```mermaid
+sequenceDiagram
+    participant UI as Chat in Ask mode
+    participant API as FastAPI chat ask
+    participant V as pgvector
+    participant G as Neo4j
+    participant R as Redis limiter
+    participant L as LLM
+
+    UI->>API: question with JWT
+    API->>V: nearest literature chunks
+    API->>G: rules for the entities in the question
+    alt nothing relevant found
+        API-->>UI: ungrounded reply, no sources, no LLM call
+    else evidence found
+        API->>R: count one use for today
+        alt over the daily limit
+            API-->>UI: 429 with the limit
+        else allowed
+            API->>L: answer from the numbered context only
+            L-->>API: answer or INSUFFICIENT_EVIDENCE
+            API-->>UI: answer, sources and rules
+        end
+    end
+```
+
+The answer prompt tells the model to use only the numbered context, to cite `[S1]` and `[R1]` style references, to treat the context as untrusted text, and to reply `INSUFFICIENT_EVIDENCE` when the context cannot answer. A chunk counts as evidence when its cosine distance is at most `ASK_MAX_DISTANCE` (0.75). On the live store, on-topic questions measured about 0.36 to 0.68 and off-topic ones 0.87 and above.
+
 ### Evidence panel
 
-The panel drives the knowledge loop. It shows counts for ChromaDB chunks and Neo4j nodes and relationships, starts a harvest, and follows both the harvest and the graph mining it queues.
+The panel drives the knowledge loop. It shows counts for pgvector chunks and Neo4j nodes and relationships, starts a harvest, and follows both the harvest and the graph mining it queues.
 
 ```mermaid
 stateDiagram-v2
@@ -1014,10 +1085,11 @@ sequenceDiagram
 
 | Area | Practice |
 |---|---|
-| Authentication | `POST /research/start`, every `/ingestion` route, `/test-celery` and `/task/{id}` require a valid Supabase JWT |
+| Authentication | `POST /research/start`, `POST /chat/ask`, `POST /rag/query`, every `/ingestion` route, `/test-celery` and `/task/{id}` require a valid Supabase JWT |
 | Authorization | Row level security on every table, scoped to `auth.uid()` |
 | Secrets | Backend `.env` only. Keys never reach the browser |
 | Keys in transit | The Gemini key travels in the `x-goog-api-key` header, never in a URL, so it cannot leak through logs |
+| LLM spend | Ask answers are limited per user per day (`ASK_DAILY_LIMIT`), and a question with no evidence never calls the LLM |
 | Error responses | Health and RAG errors are generic. Provider and source failures report status or type, never URLs |
 | Ingestion input | Sources are a closed set, queries are trimmed and capped at 200 characters, and results per source are capped at 50 |
 | Harvested content | Relevance-filtered before indexing. XML from arXiv and PubMed is parsed with `defusedxml` |
@@ -1075,7 +1147,6 @@ NEO4J_PASSWORD=<password>
 
 OPENROUTER_API_KEY=<key>
 GEMINI_API_KEY=<key>
-CHROMA_DATABASE=database
 
 # Recommended for the paper harvesters
 CONTACT_EMAIL=you@example.org
@@ -1088,7 +1159,8 @@ TLS for `rediss://` is configured in code. Do not append `?ssl_cert_reqs=...` to
 
 ```bash
 # a) Supabase: run backend/supabase/schema.sql once in the SQL editor.
-#    It creates ResearchTasks, SavedMaterials, chat_messages and their RLS policies.
+#    It enables the pgvector extension and creates ResearchTasks, SavedMaterials, chat_messages,
+#    literature_chunks, their indexes, the match_literature_chunks function and RLS policies.
 
 # b) Seed the Neo4j knowledge graph (from backend/)
 uv run python -m app.scripts.seed_neo4j
@@ -1136,7 +1208,7 @@ VITE_SUPABASE_ANON_KEY=<anon-key>
 
 ```bash
 curl http://localhost:8000/api/v1/health
-curl http://localhost:8000/api/v1/health/db        # neo4j, chroma, supabase
+curl http://localhost:8000/api/v1/health/db        # neo4j, pgvector, supabase
 ```
 
 For a first real run, set `GA_GENERATIONS=3` in `backend/.env`. A discovery then costs about 8 LLM requests instead of 42.
@@ -1145,7 +1217,8 @@ For a first real run, set `GA_GENERATIONS=3` in `backend/.env`. A discovery then
 
 1. Sign up, then open the dashboard.
 2. Open **Evidence graph**, enter a topic such as "cobalt-free cathode doping", and harvest literature.
-3. Open **Discovery space** and describe the material you want. You are redirected to the results page when the run finishes.
+3. Open **Discovery space**. In **Ask** mode, the default, type a question such as "What do the papers say about LFP cycle life?" and read the answer with its sources.
+4. Switch to **Discover**, or start a message with `/discover`, and describe the material you want. You are redirected to the results page when the run finishes.
 
 ---
 
@@ -1156,16 +1229,17 @@ All routes are mounted under `/api/v1`.
 | Method | Endpoint | Auth | Purpose |
 |---|---|---|---|
 | `GET` | `/health` | none | Liveness |
-| `GET` | `/health/db` | none | Neo4j, ChromaDB and Supabase connectivity |
+| `GET` | `/health/db` | none | Neo4j, pgvector and Supabase connectivity |
 | `POST` | `/test-celery?iterations=n` | JWT | Queue a dummy task, `n` from 1 to 20 |
 | `GET` | `/task/{task_id}` | JWT | Raw Celery task state |
 | `POST` | `/research/start` | JWT | Start a discovery run. Body `{ "prompt": "..." }` |
 | `GET` | `/research/status/{task_id}` | none | Progress, final report or failure reason |
-| `POST` | `/rag/query` | none | GraphRAG answer for a chemistry question |
+| `POST` | `/chat/ask` | JWT | Grounded answer from the literature and graph. Body `{ "question": "..." }` |
+| `POST` | `/rag/query` | JWT | Raw GraphRAG context and an LLM rewrite for a chemistry question |
 | `GET` | `/graph/material/{material_name}` | none | `{ nodes, links }` graph for a formula |
 | `POST` | `/ingestion/sync` | JWT | Start a harvest. Body `{ query, sources, max_results }` |
 | `GET` | `/ingestion/status/{task_id}` | JWT | Progress of a harvest or of the graph mining it queued |
-| `GET` | `/ingestion/stats` | JWT | ChromaDB and Neo4j counts, store errors, nightly flag |
+| `GET` | `/ingestion/stats` | JWT | pgvector and Neo4j counts, store errors, nightly flag |
 
 ### Discovery status shapes
 
@@ -1187,6 +1261,20 @@ All routes are mounted under `/api/v1`.
 | Complete (graph mining) | `chunks_extracted`, `chunks_pending`, `triplets_ingested`, `stopped_reason` |
 | Failed | `error` |
 
+### Ask request and response
+
+`POST /chat/ask` takes a `question` of 3 to 1000 characters.
+
+| Field | Meaning |
+|---|---|
+| `answer` | The grounded answer, or a standard "not enough evidence" message |
+| `grounded` | `false` when no evidence was found or the model judged it insufficient |
+| `sources` | Numbered `S1`, `S2`, ...: `title`, `doi`, `url`, `source`, `snippet`, `distance` |
+| `graph_rules` | Knowledge-graph rules used, such as `NMC811 CAN_BE_DOPED_WITH Mg` |
+| `remaining_today` | Answers left today, or `null` when none was counted |
+
+Errors: `429` when the daily limit is used up, `503` when the LLM quota is spent or the model or literature search is unavailable, and `422` for an invalid question.
+
 ### Example
 
 ```bash
@@ -1197,6 +1285,11 @@ curl -X POST http://localhost:8000/api/v1/research/start \
 
 # Poll it
 curl http://localhost:8000/api/v1/research/status/<task_id>
+
+# Ask a question grounded in your harvested papers
+curl -X POST http://localhost:8000/api/v1/chat/ask \
+  -H "Authorization: Bearer $JWT" -H "Content-Type: application/json" \
+  -d '{"question": "What do the papers say about LFP cathode cycle life?"}'
 
 # Explore the chemistry behind a candidate
 curl "http://localhost:8000/api/v1/graph/material/LiNi0.5Mn0.5O2"
@@ -1214,8 +1307,6 @@ curl "http://localhost:8000/api/v1/graph/material/LiNi0.5Mn0.5O2"
 | `REDIS_URL` | yes | | Upstash `rediss://...` string |
 | `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` | yes | | Neo4j connection |
 | `GEMINI_API_KEY` | yes | | Fallback LLM |
-| `CHROMA_DATABASE` | yes | | Chroma database name |
-| `CHROMA_PERSIST_DIRECTORY` | no | `./chroma_data` | Vector store location |
 | `OPENROUTER_API_KEY` | recommended | none | Primary LLM. Without it AURA uses Gemini only |
 | `HF_API_key` | no | none | Not used in normal operation |
 | `NCBI_API_KEY` | no | none | Faster PubMed requests |
@@ -1226,6 +1317,8 @@ curl "http://localhost:8000/api/v1/graph/material/LiNi0.5Mn0.5O2"
 | `GRAPH_EXTRACTION_MAX_CALLS` | no | `10` | LLM requests per graph-mining run |
 | `GRAPH_EXTRACTION_GROUP_SIZE` | no | `4` | Chunks sent per LLM request |
 | `NIGHTLY_HARVEST_ENABLED` | no | `false` | Registers the 02:00 UTC sweep. Needs `celery beat` |
+| `ASK_DAILY_LIMIT` | no | `30` | Grounded Ask answers per user per UTC day |
+| `ASK_MAX_DISTANCE` | no | `0.75` | Cosine distance above which a literature chunk is not treated as evidence |
 | `LLM_CACHE_TTL_SECONDS` | no | `3600` | Lifetime of cached predictions and verdicts |
 | `LLM_CACHE_MAX_ENTRIES` | no | `5000` | Size bound of each cache |
 | `DATABASE_URL` | no | | Only for the legacy `setup_chat_table.py` script |
@@ -1259,6 +1352,7 @@ uv run pytest tests/test_ingestion_pipeline.py -v
 | `test_harvesters.py`, `test_harvester_quality.py` | Source parsing, formula preservation, query building, relevance, de-duplication |
 | `test_ingestion_pipeline.py`, `test_ingestion_api.py` | Harvest task, incremental graph mining, nightly sweep, stats |
 | `test_api_hardening.py` | Authentication, input validation, error hygiene |
+| `test_chat_ask.py` | Ask endpoint branches, source grouping, the daily limiter, the answer prompt, graph rules |
 | `test_runtime_robustness.py` | Cache expiry, recursion limit, long runs |
 | `test_reporter_phase8.py` | Reporter and graph construction |
 
@@ -1268,11 +1362,17 @@ Scripts that exercise the real code without spending quota:
 # A full discovery run against a fake LLM, counting requests
 uv run python -m app.scripts.simulate_discovery_run --generations 20
 
-# The ingestion tasks against a real in-memory ChromaDB, with fake sources and LLM
+# The ingestion tasks against the live pgvector store, with fake sources and LLM (cleans up its rows)
 uv run python -m app.scripts.verify_ingestion_pipeline
 
 # The same discovery graph against the real services (spends quota)
 uv run python -m app.scripts.simulate_discovery_run --generations 2 --live
+
+# The Ask endpoint against the live store, graph, limiter and LLM (one LLM request)
+uv run python -m app.scripts.verify_chat_ask
+
+# POST /research/start against the real database, with queueing replaced (no quota, cleans up)
+uv run python -m app.scripts.verify_chat_discover
 ```
 
 Frontend:
@@ -1298,8 +1398,6 @@ flowchart LR
     up --> bt["Beat service, optional<br/>one instance only"]
     wk --> sb
     wk --> n4[("Neo4j Aura")]
-    wk --> vol[("Shared persistent volume<br/>chroma_data")]
-    apisvc --> vol
     wk --> llm["OpenRouter and Gemini"]
     wk --> src["arXiv · Crossref · PubMed · Wikipedia"]
 ```
@@ -1311,7 +1409,7 @@ flowchart LR
 | Worker | `uv run celery -A app.core.celery_app.celery_app worker --loglevel=info --concurrency N` |
 | Beat | Exactly one instance, only if `NIGHTLY_HARVEST_ENABLED=true` |
 | CORS | Add the production origin to `allow_origins` in `backend/main.py` |
-| Vector store | API and worker both read `chroma_data`. Mount the same persistent volume |
+| Vector store | pgvector in Supabase, so nothing to mount. Run `backend/supabase/schema.sql` once per project |
 | LLM capacity | The free tier is about one discovery run a day. Add OpenRouter credit for sustained use |
 | Secrets | Inject from your platform. Never commit `.env` |
 | Health checks | Probe `/api/v1/health` and `/api/v1/health/db` |
@@ -1327,9 +1425,9 @@ AURA_Data_Driven/
 ├── backend/
 │   ├── app/
 │   │   ├── core/                    # config, JWT auth, Celery app and beat schedule
-│   │   ├── db/                      # Supabase, Neo4j, ChromaDB clients, Neo4j constraints
+│   │   ├── db/                      # Supabase and Neo4j clients, literature store, Neo4j constraints
 │   │   ├── api/v1/
-│   │   │   ├── endpoints/           # health, research, rag, graph, ingestion
+│   │   │   ├── endpoints/           # health, research, chat, rag, graph, ingestion
 │   │   │   │                        # analysis.py and strategy.py are empty placeholders
 │   │   │   └── router.py
 │   │   ├── agents/
@@ -1344,6 +1442,7 @@ AURA_Data_Driven/
 │   │   │   ├── retrieval/           # vector, graph, GraphRAG fusion
 │   │   │   ├── llm/                 # client (batched calls) and error types
 │   │   │   ├── cache.py             # bounded expiring caches for LLM results
+│   │   │   ├── rate_limit.py        # per-user daily limit in Redis
 │   │   │   └── embeddings.py        # local ONNX embedding function
 │   │   ├── models/                  # Pydantic schemas
 │   │   └── scripts/                 # seeding, PDF ingestion, simulators, manual checks
@@ -1362,10 +1461,10 @@ AURA_Data_Driven/
 │   │   ├── pages/                   # Landing, Login, Signup, Dashboard, Results, Settings
 │   │   ├── components/              # landing, dashboard (Chat, Evidence, Reports), results, shared
 │   │   ├── hooks/                   # useDiscoveryTask, useIngestionSync
-│   │   ├── lib/                     # api, supabase, pollIngestionTask, PDF export, baseline
+│   │   ├── lib/                     # api, supabase, pollIngestionTask, chatIntent, PDF export, baseline
 │   │   ├── store/                   # Zustand research store
 │   │   ├── contexts/                # auth context
-│   │   └── types/                   # research and ingestion types
+│   │   └── types/                   # research, ingestion and chat types
 │   └── tests/                       # polling tests
 ├── docs/                            # PRD, TRD, GA design
 ├── phases/                          # phase_0 to phase_8 build plan
@@ -1386,13 +1485,17 @@ AURA_Data_Driven/
 | Worker cannot connect and the URL has `?ssl_cert_reqs=` | redis-py rejects that value | Use the plain `rediss://` URL. TLS is set in code |
 | Celery warns about `ssl_cert_reqs=CERT_NONE` | TLS certificate verification is disabled by configuration | Expected. See [Known limitations](#known-limitations) |
 | Run ends `Failed` with a quota message | OpenRouter's free tier is spent and Gemini also failed | Wait for the 00:00 UTC reset, add OpenRouter credit, or set `GA_GENERATIONS=3` |
-| Evidence tab shows a dash and a warning | ChromaDB or Neo4j is unreachable | Check `/api/v1/health/db`, then the store named in the warning |
+| Evidence tab shows a dash and a warning | pgvector or Neo4j is unreachable | Check `/api/v1/health/db`, then the store named in the warning |
 | Sync fails with "All literature sources failed" | No source could be reached | Check your network. The task error names each source and its status |
 | Sync completes with some `source_errors` | One source returned an error or was rate limited | Re-run later. Other sources were still indexed |
 | Graph mining reports `quota_exhausted` | The LLM quota ran out mid-run | Nothing is lost. Unfinished chunks stay pending for the next run |
 | Nightly sweep never runs | It is off by default and needs its own process | Set `NIGHTLY_HARVEST_ENABLED=true` and run `celery beat` |
 | Neo4j `Unable to retrieve routing information` | The Aura instance is paused or restarting | Resume it in the Aura console and use the `neo4j+s://` URI |
 | "Research reports" empty or database errors | Supabase tables are missing | Run `backend/supabase/schema.sql` |
+| Ask replies that it lacks evidence | No harvested chunk is close enough to the question | Harvest papers on the topic from the Evidence tab, or rephrase the question |
+| Ask returns HTTP 429 | `ASK_DAILY_LIMIT` answers used for today (UTC) | Wait for the day to roll over, use Discover, or raise the limit |
+| Ask returns HTTP 503 with a quota message | The OpenRouter free tier is spent and Gemini also failed | Wait for the 00:00 UTC reset or add OpenRouter credit |
+| Literature search or Evidence stats report a pgvector error | The `vector` extension, `literature_chunks` table or `match_literature_chunks` function is missing | Run `backend/supabase/schema.sql` in the Supabase SQL editor |
 | Browser CORS error against a deployed API | The origin is not allow-listed | Add it in `backend/main.py` |
 | `uv run pytest` cannot import `app` | Running from outside `backend/` | Run from `backend/`, where `pyproject.toml` sets the import path |
 
@@ -1400,13 +1503,14 @@ AURA_Data_Driven/
 
 ## Known limitations
 
-- `GET /research/status`, `/graph/material` and `/rag/query` are unauthenticated. Task IDs are unguessable, but these should sit behind authentication before wide exposure.
+- `GET /research/status` and `/graph/material` are unauthenticated. Task IDs are unguessable, but these should sit behind authentication before wide exposure.
 - Redis TLS uses `ssl.CERT_NONE`, so the broker certificate is not verified. Switch to `CERT_REQUIRED` for strict verification.
 - Harvesting reads titles and abstracts or summaries only. Full-text PDFs are ingested separately through `ingest_papers`.
 - Graph triplets are extracted by an LLM and are not human-verified. Provenance is not stored on graph edges, so a bad fact cannot yet be traced back to its source paper.
 - The relevance gate is keyword-based. It removes clearly off-topic content but is not a semantic classifier.
-- ChromaDB is file-local, so the API and the worker must share its directory.
+- Literature vectors share the Supabase project's database and storage quota, so a very large corpus eventually needs a larger plan.
 - A discovery run uses about 42 LLM requests, which is most of the free-tier daily quota.
+- Ask answers use only the harvested literature and the graph, so a topic with no harvested papers gets no answer until some are added. The mode suggestions are keyword rules and can miss unusual phrasing.
 - CORS allows only the local development origin until you add your own.
 - `analysis.py` and `strategy.py` under `app/api/v1/endpoints/` are empty placeholders, and the Docker files are unmaintained placeholders.
 
