@@ -28,7 +28,7 @@ const STOP_REASONS: Record<string, string> = {
   neo4j_error: 'Neo4j rejected a write; the remaining chunks stay pending.',
 };
 
-const STORE_LABELS: Record<string, string> = { chroma: 'ChromaDB', neo4j: 'Neo4j' };
+const STORE_LABELS: Record<string, string> = { pgvector: 'pgvector', neo4j: 'Neo4j' };
 
 // null means the store could not be reached, which must not be shown as an empty store
 const formatCount = (value: number | null | undefined, loading: boolean) =>
@@ -135,10 +135,10 @@ export default function EvidencePanel() {
             padding: '1rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--moss-light)', fontSize: '0.8rem', marginBottom: '0.4rem' }}>
-              <BookOpen size={15} /> ChromaDB Vectors
+              <BookOpen size={15} /> pgvector Chunks
             </div>
             <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--paper)', fontFamily: 'var(--mono)' }}>
-              {formatCount(stats?.chroma_literature_chunks, loadingStats)}
+              {formatCount(stats?.literature_chunks, loadingStats)}
             </div>
             <small style={{ color: 'var(--text-dim)', fontSize: '0.72rem' }}>Indexed literature chunks</small>
           </div>
