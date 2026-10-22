@@ -80,6 +80,24 @@ The knowledge loop feeds the discovery loop: harvested literature and mined grap
 - **A chat that answers or discovers.** Ask mode answers questions from your harvested papers and the knowledge graph, with cited sources. Discover mode runs the evolutionary search.
 - **Per-user history** in Supabase under row level security.
 
+### Screenshots
+
+**Discovery space: Ask mode.** A question answered from harvested papers, with numbered sources and knowledge-graph rules.
+
+![Ask mode answering a question with cited sources](Images/ask.png)
+
+**Evidence graph.** Live counts of indexed literature and graph facts, with on-demand harvesting from arXiv, Crossref, PubMed and Wikipedia.
+
+![Evidence graph with literature counts and harvest controls](Images/harvest.png)
+
+**Research reports.** Every discovery run and question is saved here with its status: completed, processing or failed.
+
+![Research reports list with statuses](Images/reports.png)
+
+**Discovery report.** The top candidates from one run, with the summary, the score chart over generations, candidate cards compared against NMC811, and the chemistry knowledge graph.
+
+![Discovery report page](Images/report.png)
+
 ---
 
 ## Technology stack
